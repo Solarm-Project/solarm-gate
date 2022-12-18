@@ -1,0 +1,5 @@
+name "u-boot"
+
+sources {
+	git "https://github.com/u-boot/u-boot" branch="v2022.10"
+}

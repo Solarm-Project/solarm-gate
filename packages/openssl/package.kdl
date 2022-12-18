@@ -1,0 +1,7 @@
+name "openssl"
+
+sources {
+	archive "https://www.openssl.org/source/openssl-3.0.7.tar.gz"
+	file "openssl-15-illumos-aarch.conf" "Configurations/15-illumos-aarch.conf"
+}
+

@@ -1,0 +1,6 @@
+name "xorriso"
+
+sources {
+	archive "https://www.gnu.org/software/xorriso/xorriso-1.5.4.pl02.tar.gz"
+	patch "xorriso-no-libvol.patch" drop-directories=1
+}

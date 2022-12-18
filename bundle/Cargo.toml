@@ -1,0 +1,11 @@
+[package]
+name = "bundle"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+knuffel = "2.0.0"
+miette = { version = "4.3.0", features = ["fancy"] }
+thiserror = "1.0.38"

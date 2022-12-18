@@ -1,0 +1,5 @@
+name "libxml2"
+
+sources {
+	archive "http://xmlsoft.org/download/libxml2-2.9.9.tar.gz"
+}

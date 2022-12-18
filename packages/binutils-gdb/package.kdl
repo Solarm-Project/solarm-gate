@@ -1,0 +1,7 @@
+name "binutils-gdb"
+
+/*
+sources {
+	git "https://github.com/richlowe/binutils-gdb" branch="illumos-arm64"
+}
+*/

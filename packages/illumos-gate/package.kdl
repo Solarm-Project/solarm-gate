@@ -1,0 +1,5 @@
+name "illumos-gate"
+
+sources {
+	git "https://github.com/richlowe/illumos-gate" branch="arm64-gate"
+}

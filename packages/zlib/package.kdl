@@ -1,0 +1,5 @@
+name "zlib"
+
+sources {
+	archive "https://zlib.net/fossils/zlib-1.2.12.tar.gz"
+}

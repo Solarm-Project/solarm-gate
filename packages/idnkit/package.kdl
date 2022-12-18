@@ -1,0 +1,5 @@
+name "idnkit"
+
+sources {
+	archive "http://jprs.co.jp/idn/idnkit-2.3.tar.bz2"
+}
