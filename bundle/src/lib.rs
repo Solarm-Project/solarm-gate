@@ -1,10 +1,12 @@
+use kdl::KdlDocument;
 use miette::Diagnostic;
-use miette::{Context, IntoDiagnostic};
 use std::{
-    fs::read_to_string,
+    fs::{read_to_string, File},
+    io::Write,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+use url::Url;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum BundleError {
@@ -15,6 +17,12 @@ pub enum BundleError {
     #[error(transparent)]
     #[diagnostic(code(bundle::knuffel_error))]
     Knuffel(#[from] knuffel::Error),
+    #[error(transparent)]
+    #[diagnostic(code(bundle::kdl_error))]
+    Kdl(#[from] kdl::KdlError),
+    #[error(transparent)]
+    #[diagnostic(code(bundle::url_parse_error))]
+    UrlParseError(#[from] url::ParseError),
 }
 
 type BundleResult<T> = std::result::Result<T, BundleError>;
@@ -22,6 +30,7 @@ type BundleResult<T> = std::result::Result<T, BundleError>;
 pub struct Bundle {
     path: PathBuf,
     pub package_document: Package,
+    kdl_doc: Option<KdlDocument>,
 }
 
 impl Bundle {
@@ -51,14 +60,59 @@ impl Bundle {
                     .ok_or(BundleError::NoPackageDocumentParentDir)?
                     .to_path_buf(),
                 package_document,
+                kdl_doc: None,
             })
         } else {
             let package_document = knuffel::parse::<Package>(&name, &package_document_string)?;
             Ok(Self {
                 path,
                 package_document,
+                kdl_doc: None,
             })
         }
+    }
+
+    fn open_document(&mut self) -> BundleResult<()> {
+        let data_string = read_to_string(&self.path.join("package.kdl"))?;
+        self.kdl_doc = Some(data_string.parse()?);
+        Ok(())
+    }
+
+    fn save_document(&mut self) -> BundleResult<()> {
+        let doc_str = self.kdl_doc.as_ref().unwrap().to_string();
+        let mut f = File::create(&self.path.join("package.kdl"))?;
+        f.write_all(doc_str.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn add_source(&mut self, node: SourceNode) -> BundleResult<()> {
+        let kdl_doc = if let Some(kdl_doc) = &mut self.kdl_doc {
+            kdl_doc
+        } else {
+            self.open_document()?;
+            self.kdl_doc.as_mut().unwrap()
+        };
+
+        if kdl_doc.get("sources").is_none() {
+            kdl_doc.nodes_mut().push(kdl::KdlNode::new("sources"))
+        }
+
+        match node {
+            SourceNode::Archive(src) => {
+                let archive_source: Url = src.src.parse()?;
+                let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("sources").unwrap();
+                let src_nodes = src_node.ensure_children();
+                let mut n = kdl::KdlNode::new("archive");
+                n.push(kdl::KdlEntry::new(archive_source.to_string()));
+                src_nodes.nodes_mut().push(n);
+                self.save_document()?;
+            }
+            SourceNode::Git(_) => todo!(),
+            SourceNode::File(_) => todo!(),
+            SourceNode::Patch(_) => todo!(),
+            SourceNode::Overlay(_) => todo!(),
+        }
+        Ok(())
     }
 }
 

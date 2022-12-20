@@ -12,3 +12,4 @@ kdl = "4.6.0"
 miette = { version = "4.3.0", features = ["fancy"] }
 rustyline = { version = "10.0.0", features = ["case_insensitive_history_search"] }
 thiserror = "1.0.38"
+url = "2.3.1"
