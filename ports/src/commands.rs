@@ -4,6 +4,8 @@ use bundle::Bundle;
 use clap::Parser;
 use miette::Result;
 
+use crate::workspace::Workspace;
+
 use self::add::handle_add;
 
 #[derive(Debug, Parser)]
@@ -20,10 +22,14 @@ pub enum CommandReturn {
     Exit,
 }
 
-pub fn handle_command(args: &ShellCommands, doc: &mut Bundle) -> Result<CommandReturn> {
+pub fn handle_command(
+    args: &ShellCommands,
+    wks: &Workspace,
+    doc: &mut Bundle,
+) -> Result<CommandReturn> {
     match args {
         ShellCommands::Add { section } => {
-            handle_add(&section, doc)?;
+            handle_add(wks, &section, doc)?;
             Ok(CommandReturn::Continue)
         }
         ShellCommands::Exit => Ok(CommandReturn::Exit),

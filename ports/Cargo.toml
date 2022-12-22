@@ -8,8 +8,12 @@ edition = "2021"
 [dependencies]
 bundle = { version = "0.1.0", path = "../bundle" }
 clap = { version = "4.0.29", features = ["derive"] }
+curl = "0.4.44"
+fs_extra = "1.2.0"
 kdl = "4.6.0"
+log = "0.4.17"
 miette = { version = "4.3.0", features = ["fancy"] }
 rustyline = { version = "10.0.0", features = ["case_insensitive_history_search"] }
+sha2 = "0.10.6"
 thiserror = "1.0.38"
 url = "2.3.1"

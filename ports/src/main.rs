@@ -1,4 +1,5 @@
 mod commands;
+mod workspace;
 
 use bundle::Bundle;
 use clap::{Parser, Subcommand};
@@ -7,6 +8,7 @@ use miette::{IntoDiagnostic, Result, WrapErr};
 use rustyline::error::ReadlineError;
 use std::{fs::create_dir_all, path::PathBuf};
 use thiserror::Error;
+use workspace::Workspace;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -63,8 +65,9 @@ fn main() -> Result<()> {
                 let mut args = vec!["ports"];
                 let mut argn = unmatched.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
                 args.append(&mut argn);
+                let wks = Workspace::new("./")?;
                 let cmd: ShellCommands = ShellCommands::parse_from(args);
-                match handle_command(&cmd, &mut package_bundle) {
+                match handle_command(&cmd, &wks, &mut package_bundle) {
                     Ok(_) => return Ok(()),
                     Err(err) => {
                         return Err(err);
@@ -80,6 +83,7 @@ fn main() -> Result<()> {
                     Ok(line) => {
                         let mut args = vec!["shell"];
                         args.append(&mut line.split(" ").collect());
+                        let wks = Workspace::new("./")?;
                         let cmd: ShellCommands = match ShellCommands::try_parse_from(args) {
                             Ok(cmd) => cmd,
                             Err(e) => {
@@ -87,7 +91,8 @@ fn main() -> Result<()> {
                                 continue;
                             }
                         };
-                        match handle_command(&cmd, &mut package_bundle) {
+
+                        match handle_command(&cmd, &wks, &mut package_bundle) {
                             Ok(res) => match res {
                                 commands::CommandReturn::Continue => {}
                                 commands::CommandReturn::Exit => break,

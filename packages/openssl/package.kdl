@@ -1,7 +1,7 @@
 name "openssl"
 
-sources {
-	archive "https://www.openssl.org/source/openssl-3.0.7.tar.gz"
+sources {    
+	archive "https://www.openssl.org/source/openssl-3.0.7.tar.gz" sha512="6c2bcd1cd4b499e074e006150dda906980df505679d8e9d988ae93aa61ee6f8c23c0fa369e2edc1e1a743d7bec133044af11d5ed57633b631ae479feb59e3424"
 	file "openssl-15-illumos-aarch.conf" "Configurations/15-illumos-aarch.conf"
 }
 

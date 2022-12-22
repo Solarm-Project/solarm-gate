@@ -97,22 +97,72 @@ impl Bundle {
             kdl_doc.nodes_mut().push(kdl::KdlNode::new("sources"))
         }
 
+        let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("sources").unwrap();
+        let src_nodes = src_node.ensure_children();
+
         match node {
             SourceNode::Archive(src) => {
                 let archive_source: Url = src.src.parse()?;
-                let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("sources").unwrap();
-                let src_nodes = src_node.ensure_children();
                 let mut n = kdl::KdlNode::new("archive");
                 n.push(kdl::KdlEntry::new(archive_source.to_string()));
+                n.push(kdl::KdlEntry::new_prop("sha512", src.sha512));
                 src_nodes.nodes_mut().push(n);
                 self.save_document()?;
             }
-            SourceNode::Git(_) => todo!(),
-            SourceNode::File(_) => todo!(),
-            SourceNode::Patch(_) => todo!(),
-            SourceNode::Overlay(_) => todo!(),
+            SourceNode::Git(git_src) => {
+                let mut n = kdl::KdlNode::new("git");
+                n.push(kdl::KdlEntry::new(git_src.repository));
+                if let Some(branch) = git_src.branch {
+                    n.push(kdl::KdlEntry::new_prop("branch", branch));
+                }
+                if let Some(tag) = git_src.tag {
+                    n.push(kdl::KdlEntry::new_prop("tag", tag))
+                }
+                src_nodes.nodes_mut().push(n);
+                self.save_document()?;
+            }
+            SourceNode::File(file_src) => {
+                let mut n = kdl::KdlNode::new("file");
+                n.push(kdl::KdlEntry::new(
+                    file_src.bundle_path.to_string_lossy().to_string(),
+                ));
+                if let Some(target_path) = file_src.target_path {
+                    n.push(kdl::KdlEntry::new(
+                        target_path.to_string_lossy().to_string(),
+                    ));
+                }
+                src_nodes.nodes_mut().push(n);
+                self.save_document()?;
+            }
+            SourceNode::Patch(patch_src) => {
+                let mut n = kdl::KdlNode::new("patch");
+                n.push(kdl::KdlEntry::new(
+                    patch_src.bundle_path.to_string_lossy().to_string(),
+                ));
+                if let Some(dir_to_drop) = patch_src.drop_directories {
+                    n.push(kdl::KdlEntry::new_prop("drop-directories", dir_to_drop));
+                }
+                src_nodes.nodes_mut().push(n);
+                self.save_document()?;
+            }
+            SourceNode::Overlay(overlay_src) => {
+                let mut n = kdl::KdlNode::new("overlay");
+                n.push(kdl::KdlEntry::new(
+                    overlay_src.bundle_path.to_string_lossy().to_string(),
+                ));
+                src_nodes.nodes_mut().push(n);
+                self.save_document()?;
+            }
         }
         Ok(())
+    }
+
+    pub fn get_path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn get_name(&self) -> String {
+        self.package_document.name.clone()
     }
 }
 
@@ -149,6 +199,9 @@ pub enum SourceNode {
 pub struct ArchiveSource {
     #[knuffel(argument)]
     pub src: String,
+
+    #[knuffel(property)]
+    pub sha512: String,
 }
 
 #[derive(knuffel::Decode)]
@@ -169,18 +222,47 @@ pub struct FileSource {
     pub target_path: Option<PathBuf>,
 }
 
+impl FileSource {
+    pub fn new<P: AsRef<Path>>(bundle_path: P, target_path: Option<P>) -> BundleResult<Self> {
+        Ok(Self {
+            bundle_path: bundle_path.as_ref().to_path_buf(),
+            target_path: target_path.as_ref().map(|p| p.as_ref().to_path_buf()),
+        })
+    }
+}
+
 #[derive(knuffel::Decode)]
 pub struct PatchSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
     #[knuffel(property)]
-    pub drop_directories: Option<i32>,
+    pub drop_directories: Option<i64>,
+}
+
+impl PatchSource {
+    pub fn new<P: AsRef<Path>>(
+        bundle_path: P,
+        drop_directories: Option<i64>,
+    ) -> BundleResult<Self> {
+        Ok(Self {
+            bundle_path: bundle_path.as_ref().to_path_buf(),
+            drop_directories,
+        })
+    }
 }
 
 #[derive(knuffel::Decode)]
 pub struct OverlaySource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
+}
+
+impl OverlaySource {
+    pub fn new<P: AsRef<Path>>(bundle_path: P) -> BundleResult<Self> {
+        Ok(Self {
+            bundle_path: bundle_path.as_ref().to_path_buf(),
+        })
+    }
 }
 
 #[derive(knuffel::Decode)]
@@ -240,7 +322,7 @@ mod tests {
     fn parse_one() {
         let bundle_path = Path::new("../packages/openssl/package.kdl");
         let package_document_string = read_to_string(&bundle_path).unwrap();
-        let b = match knuffel::parse::<Package>("openssl", &package_document_string) {
+        let _b = match knuffel::parse::<Package>("openssl", &package_document_string) {
             Ok(b) => b,
             Err(e) => {
                 assert!(false);

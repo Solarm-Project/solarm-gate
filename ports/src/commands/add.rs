@@ -4,6 +4,8 @@ use bundle::Bundle;
 use clap::Subcommand;
 use miette::Result;
 
+use crate::workspace::Workspace;
+
 #[derive(Debug, Subcommand)]
 pub enum Sections {
     Source {
@@ -20,8 +22,8 @@ impl std::fmt::Display for Sections {
     }
 }
 
-pub fn handle_add(section: &Sections, doc: &mut Bundle) -> Result<()> {
+pub fn handle_add(wks: &Workspace, section: &Sections, doc: &mut Bundle) -> Result<()> {
     match section {
-        Sections::Source { source } => source::handle_add_source(&source, doc),
+        Sections::Source { source } => source::handle_add_source(wks, &source, doc),
     }
 }
