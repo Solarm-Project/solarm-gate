@@ -50,6 +50,11 @@ impl Workspace {
             ),
         )
     }
+
+    pub fn get_name(&self) -> String {
+        let name_path = self.path.file_name().unwrap();
+        name_path.to_string_lossy().to_string()
+    }
 }
 
 pub struct DownloadFile(PathBuf, std::fs::File, sha2::Sha512, Option<String>);

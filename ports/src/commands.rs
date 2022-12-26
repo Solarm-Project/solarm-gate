@@ -1,4 +1,5 @@
 pub mod add;
+pub mod workspace;
 
 use bundle::Bundle;
 use clap::Parser;
