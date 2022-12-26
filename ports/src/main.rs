@@ -1,9 +1,10 @@
 mod commands;
 mod config;
+mod download;
 mod workspace;
 
 use bundle::Bundle;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use commands::{handle_command, workspace::handle_workspace, ShellCommands};
 use config::Config;
 use miette::{IntoDiagnostic, Result, WrapErr};
@@ -33,6 +34,22 @@ enum Command {
         #[command(subcommand)]
         cmd: Option<commands::workspace::Command>,
     },
+    Build {
+        #[arg(long = "step", short)]
+        stop_on_step: Option<BuildSteps>,
+    },
+}
+
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum BuildSteps {
+    Download,
+    Unpack,
+    Patch,
+    Configure,
+    Build,
+    Install,
+    Package,
+    Publish,
 }
 
 #[derive(Debug, Error)]
@@ -161,6 +178,31 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            Ok(())
+        }
+        Command::Build { stop_on_step } => {
+            let wks = conf.get_current_wks()?;
+
+            let path = if let Some(package) = cli.package {
+                package
+            } else {
+                Path::new("./").to_path_buf()
+            };
+            let path = path.canonicalize().into_diagnostic().wrap_err(format!(
+                "Can not canonicalize path to package {}",
+                path.display()
+            ))?;
+
+            let package_bundle = Bundle::new(path)?;
+
+            download::download_and_verify(&wks, &package_bundle.package_document)?;
+
+            if let Some(stop_on_step) = stop_on_step {
+                if stop_on_step == BuildSteps::Download {
+                    return Ok(());
+                }
+            }
+
             Ok(())
         }
     }

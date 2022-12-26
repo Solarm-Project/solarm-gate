@@ -212,6 +212,8 @@ pub struct GitSource {
     pub branch: Option<String>,
     #[knuffel(property)]
     pub tag: Option<String>,
+    #[knuffel(property)]
+    pub archive: Option<bool>,
 }
 
 #[derive(knuffel::Decode)]
