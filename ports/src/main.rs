@@ -1,9 +1,10 @@
 mod commands;
 mod config;
 mod download;
+mod unpack;
 mod workspace;
 
-use bundle::Bundle;
+use bundle::{Bundle, SourceNode};
 use clap::{Parser, Subcommand, ValueEnum};
 use commands::{handle_command, workspace::handle_workspace, ShellCommands};
 use config::Config;
@@ -195,7 +196,18 @@ fn main() -> Result<()> {
 
             let package_bundle = Bundle::new(path)?;
 
-            download::download_and_verify(&wks, &package_bundle.package_document)?;
+            let sources: Vec<SourceNode> = package_bundle
+                .package_document
+                .sections
+                .iter()
+                .filter_map(|section| match section {
+                    bundle::Section::Sources(src) => Some(src.sources.clone()),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+
+            download::download_and_verify(&wks, sources.as_slice())?;
 
             if let Some(stop_on_step) = stop_on_step {
                 if stop_on_step == BuildSteps::Download {
@@ -203,7 +215,7 @@ fn main() -> Result<()> {
                 }
             }
 
-            //TODO: unpack
+            unpack::unpack_sources(&wks, sources.as_slice())?;
 
             //TODO: patch
 

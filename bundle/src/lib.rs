@@ -27,6 +27,7 @@ pub enum BundleError {
 
 type BundleResult<T> = std::result::Result<T, BundleError>;
 
+#[derive(Debug)]
 pub struct Bundle {
     path: PathBuf,
     pub package_document: Package,
@@ -166,7 +167,7 @@ impl Bundle {
     }
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
@@ -174,19 +175,19 @@ pub struct Package {
     pub sections: Vec<Section>,
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub enum Section {
     Sources(SourceSection),
     Build(BuildSection),
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct SourceSection {
     #[knuffel(children)]
     pub sources: Vec<SourceNode>,
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub enum SourceNode {
     Archive(ArchiveSource),
     Git(GitSource),
@@ -195,7 +196,7 @@ pub enum SourceNode {
     Overlay(OverlaySource),
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct ArchiveSource {
     #[knuffel(argument)]
     pub src: String,
@@ -204,7 +205,7 @@ pub struct ArchiveSource {
     pub sha512: String,
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct GitSource {
     #[knuffel(argument)]
     pub repository: String,
@@ -239,7 +240,7 @@ impl GitSource {
     }
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct FileSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -256,7 +257,7 @@ impl FileSource {
     }
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct PatchSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -276,7 +277,7 @@ impl PatchSource {
     }
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct OverlaySource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -290,7 +291,7 @@ impl OverlaySource {
     }
 }
 
-#[derive(knuffel::Decode)]
+#[derive(Debug, knuffel::Decode, Clone)]
 pub struct BuildSection {}
 
 mod tests {
