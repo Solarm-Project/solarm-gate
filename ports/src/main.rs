@@ -48,7 +48,7 @@ pub(crate) enum BuildSteps {
     Configure,
     Build,
     Install,
-    Package,
+    Mogrify,
     Publish,
 }
 
@@ -202,6 +202,20 @@ fn main() -> Result<()> {
                     return Ok(());
                 }
             }
+
+            //TODO: unpack
+
+            //TODO: patch
+
+            //TODO: configure
+
+            //TODO: build
+
+            //TODO: install
+
+            //TODO: mogrify
+
+            //TODO: publish
 
             Ok(())
         }

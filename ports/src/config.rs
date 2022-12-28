@@ -93,6 +93,19 @@ impl Config {
         Ok(data_dir.to_path_buf())
     }
 
+    pub fn get_or_create_archives_dir() -> Result<PathBuf> {
+        let proj_dir = ProjectDirs::from(QUALIFIER, ORG, APP_NAME)
+            .ok_or(miette::miette!(NO_PROJECT_DIR_ERR_STR))?;
+        let archive_dir = proj_dir.cache_dir().join("archives");
+        if !archive_dir.exists() {
+            DirBuilder::new()
+                .recursive(true)
+                .create(&archive_dir)
+                .into_diagnostic()?;
+        }
+        Ok(archive_dir.to_path_buf())
+    }
+
     pub fn get_current_wks(&self) -> Result<Workspace> {
         let current = if let Some(current) = &self.current {
             current.clone()

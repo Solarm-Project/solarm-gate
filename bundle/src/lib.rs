@@ -216,6 +216,29 @@ pub struct GitSource {
     pub archive: Option<bool>,
 }
 
+impl GitSource {
+    pub fn get_repo_prefix(&self) -> String {
+        let repo_prefix_part = self
+            .repository
+            .rsplit_once('/')
+            .unwrap_or(("", &self.repository))
+            .1;
+        let repo_prefix = if let Some(split_sucess) = repo_prefix_part.split_once('.') {
+            split_sucess.0.to_string()
+        } else {
+            repo_prefix_part.to_string()
+        };
+
+        if let Some(tag) = &self.tag {
+            format!("{}-{}", repo_prefix, tag)
+        } else if let Some(branch) = &self.branch {
+            format!("{}-{}", repo_prefix, branch)
+        } else {
+            format!("{}", repo_prefix)
+        }
+    }
+}
+
 #[derive(knuffel::Decode)]
 pub struct FileSource {
     #[knuffel(argument)]

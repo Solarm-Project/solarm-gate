@@ -33,16 +33,16 @@ impl Workspace {
         })
     }
 
-    pub fn get_archive_dir(&self) -> PathBuf {
-        self.path.join("archives")
+    pub fn get_download_dir(&self) -> PathBuf {
+        self.path.join("downloads")
     }
 
     pub fn get_file_path(&self, url: url::Url) -> Result<PathBuf> {
-        let archive_dir = self.get_archive_dir();
-        if !archive_dir.exists() {
-            DirBuilder::new().recursive(true).create(&archive_dir)?;
+        let download_dir = self.get_download_dir();
+        if !download_dir.exists() {
+            DirBuilder::new().recursive(true).create(&download_dir)?;
         }
-        Ok(archive_dir.join(
+        Ok(download_dir.join(
             Path::new(url.path())
                 .file_name()
                 .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
@@ -50,12 +50,12 @@ impl Workspace {
     }
 
     pub fn open_local_file(&self, url: url::Url) -> Result<DownloadFile> {
-        let archive_dir = self.get_archive_dir();
-        if !archive_dir.exists() {
-            DirBuilder::new().recursive(true).create(&archive_dir)?;
+        let download_dir = self.get_download_dir();
+        if !download_dir.exists() {
+            DirBuilder::new().recursive(true).create(&download_dir)?;
         }
         DownloadFile::new(
-            archive_dir.join(
+            download_dir.join(
                 Path::new(url.path())
                     .file_name()
                     .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
@@ -87,6 +87,10 @@ impl DownloadFile {
 
     pub fn get_hash(&mut self) -> String {
         format!("{:x}", self.2.clone().finalize())
+    }
+
+    pub fn get_path(&self) -> PathBuf {
+        self.0.clone().to_path_buf()
     }
 
     #[allow(dead_code)]
