@@ -25,6 +25,9 @@ struct Cli {
     command: Command,
 }
 
+//TODO: Fix command to fix commonly occuring lint errors so it get's easier to package stuff
+//TODO: verify command to verify the bundle for common problems.
+
 #[derive(Debug, Subcommand)]
 enum Command {
     Create,

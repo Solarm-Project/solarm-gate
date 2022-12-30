@@ -1,5 +1,5 @@
 use kdl::KdlDocument;
-use miette::Diagnostic;
+use miette::{Diagnostic, IntoDiagnostic};
 use std::{
     fs::{read_to_string, File},
     io::Write,
@@ -14,9 +14,6 @@ pub enum BundleError {
     IOError(#[from] std::io::Error),
     #[error("no parent directory of package.kdl exists")]
     NoPackageDocumentParentDir,
-    #[error(transparent)]
-    #[diagnostic(code(bundle::knuffel_error))]
-    Knuffel(#[from] knuffel::Error),
     #[error(transparent)]
     #[diagnostic(code(bundle::kdl_error))]
     Kdl(#[from] kdl::KdlError),
@@ -35,12 +32,12 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn new<P: AsRef<Path>>(path: P) -> BundleResult<Self> {
-        let path = path.as_ref().canonicalize()?;
+    pub fn new<P: AsRef<Path>>(path: P) -> miette::Result<Self> {
+        let path = path.as_ref().canonicalize().into_diagnostic()?;
 
         let (package_document_string, name) = if path.is_file() {
             (
-                read_to_string(path.clone())?,
+                read_to_string(path.clone()).into_diagnostic()?,
                 path.parent()
                     .ok_or(BundleError::NoPackageDocumentParentDir)?
                     .to_string_lossy()
@@ -48,7 +45,7 @@ impl Bundle {
             )
         } else {
             (
-                read_to_string(&path.join("package.kdl"))?,
+                read_to_string(&path.join("package.kdl")).into_diagnostic()?,
                 path.to_string_lossy().to_string(),
             )
         };
@@ -294,7 +291,10 @@ impl OverlaySource {
 #[derive(Debug, knuffel::Decode, Clone)]
 pub struct BuildSection {}
 
+#[cfg(test)]
 mod tests {
+
+    use miette::IntoDiagnostic;
 
     use crate::*;
 
@@ -302,7 +302,6 @@ mod tests {
 
     /// Find all the bundle files at the given path. This will search the path
     /// recursively for any file named `package.kdl`.
-    #[allow(dead_code)]
     pub fn find_bundle_files(path: &Path) -> BundleResult<Vec<PathBuf>> {
         let mut result = Vec::new();
         find_bundle_files_rec(path, &mut result)?;
@@ -310,7 +309,6 @@ mod tests {
     }
 
     /// Search the file system recursively for all build files.
-    #[allow(dead_code)]
     fn find_bundle_files_rec(path: &Path, result: &mut Vec<PathBuf>) -> BundleResult<()> {
         for entry in std::fs::read_dir(path)? {
             let e = entry?;
@@ -328,32 +326,25 @@ mod tests {
     }
 
     #[test]
-    fn test_read_all_samples() {
-        let paths = find_bundle_files(Path::new("../packages")).unwrap();
+    fn test_read_all_samples() -> miette::Result<()> {
+        let paths = find_bundle_files(Path::new("../packages")).into_diagnostic()?;
         let bundles = paths
             .into_iter()
-            .map(|path| match Bundle::new(&path) {
-                Ok(b) => b,
-                Err(e) => {
-                    panic!("could not read bundle package {} {:?}", path.display(), e);
-                }
-            })
-            .collect::<Vec<Bundle>>();
+            .map(|path| Bundle::new(&path))
+            .collect::<miette::Result<Vec<Bundle>>>()?;
         for bundle in bundles {
-            println!("Package: {}", bundle.package_document.name);
+            assert_ne!(bundle.package_document.name, String::from(""))
         }
+
+        Ok(())
     }
 
     #[test]
-    fn parse_one() {
+    fn parse_one() -> miette::Result<()> {
         let bundle_path = Path::new("../packages/openssl/package.kdl");
-        let package_document_string = read_to_string(&bundle_path).unwrap();
-        let _b = match knuffel::parse::<Package>("openssl", &package_document_string) {
-            Ok(b) => b,
-            Err(e) => {
-                assert!(false);
-                panic!("{:?}", miette::Report::new(e));
-            }
-        };
+        let package_document_string = read_to_string(&bundle_path).into_diagnostic()?;
+        let _p = knuffel::parse::<Package>("openssl", &package_document_string)?;
+
+        Ok(())
     }
 }

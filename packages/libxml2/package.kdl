@@ -1,5 +1,5 @@
 name "libxml2"
 
-sources {
-	archive "http://xmlsoft.org/download/libxml2-2.9.9.tar.gz"
+sources {    
+	archive "http://xmlsoft.org/download/libxml2-2.9.9.tar.gz" sha512="cb7784ba4e72e942614e12e4f83f4ceb275f3d738b30e3b5c1f25edf8e9fa6789e854685974eed95b362049dbf6c8e7357e0327d64c681ed390534ac154e6810"
 }
