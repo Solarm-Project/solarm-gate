@@ -1,5 +1,5 @@
 name "nspr"
 
-sources {
+source {
 	git "https://github.com/richlowe/nspr" branch="illumos-arm64"
 }

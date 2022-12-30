@@ -1,5 +1,5 @@
 name "gcc"
 
-sources {
+source {
 	git "https://github.com/richlowe/gcc" branch="il-10_3_0-arm64"
 }

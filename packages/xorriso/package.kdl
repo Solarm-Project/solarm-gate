@@ -1,6 +1,6 @@
 name "xorriso"
 
-sources {
+source {
     archive "https://www.gnu.org/software/xorriso/xorriso-1.5.4.pl02.tar.gz" sha512="ccb1acd558f559834864d3cf0564e50a8409e25fa1e199332cfc000d4d4f837533c8014b98134b5a50f14a52c80572c96570627e7aba8c5b1704e2432007061a"
 	patch "xorriso-no-libvol.patch" drop-directories=1
 }

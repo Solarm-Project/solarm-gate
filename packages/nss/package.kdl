@@ -1,6 +1,6 @@
 name "nss"
 
-sources {
+source {
 	git "https://github.com/richlowe/nss" branch="illumos-arm64"
 	overlay "nss_build"
 }

@@ -204,7 +204,7 @@ fn main() -> Result<()> {
                 .sections
                 .iter()
                 .filter_map(|section| match section {
-                    bundle::Section::Sources(src) => Some(src.sources.clone()),
+                    bundle::Section::Source(src) => Some(src.sources.clone()),
                     _ => None,
                 })
                 .flatten()

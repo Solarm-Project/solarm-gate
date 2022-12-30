@@ -4,6 +4,7 @@ use std::{
     fs::{read_to_string, File},
     io::Write,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 use thiserror::Error;
 use url::Url;
@@ -20,6 +21,8 @@ pub enum BundleError {
     #[error(transparent)]
     #[diagnostic(code(bundle::url_parse_error))]
     UrlParseError(#[from] url::ParseError),
+    #[error("unknown build type {0}")]
+    UnknownBuildType(String),
 }
 
 type BundleResult<T> = std::result::Result<T, BundleError>;
@@ -174,12 +177,15 @@ pub struct Package {
 
 #[derive(Debug, knuffel::Decode, Clone)]
 pub enum Section {
-    Sources(SourceSection),
+    Source(SourceSection),
+    Sysroot(SysrootSection),
     Build(BuildSection),
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]
 pub struct SourceSection {
+    #[knuffel(argument)]
+    pub name: Option<String>,
     #[knuffel(children)]
     pub sources: Vec<SourceNode>,
 }
@@ -288,8 +294,64 @@ impl OverlaySource {
     }
 }
 
+#[derive(Debug, Default, knuffel::Decode, Clone)]
+pub struct BuildSection {
+    #[knuffel(argument, str)]
+    pub build_type: BuildType,
+    #[knuffel(children(name = "option"))]
+    pub options: Vec<BuildOptionNode>,
+    #[knuffel(children(name = "flag"))]
+    pub flags: Vec<BuildFlagNode>,
+}
+
 #[derive(Debug, knuffel::Decode, Clone)]
-pub struct BuildSection {}
+pub enum BuildType {
+    Configure,
+}
+
+impl Default for BuildType {
+    fn default() -> Self {
+        Self::Configure
+    }
+}
+
+impl FromStr for BuildType {
+    type Err = BundleError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "configure" => Ok(Self::Configure),
+            x => Err(BundleError::UnknownBuildType(x.to_string())),
+        }
+    }
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct BuildFlagNode {
+    #[knuffel(argument)]
+    pub flag: String,
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct BuildOptionNode {
+    #[knuffel(argument)]
+    pub option: String,
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct SysrootSection {
+    #[knuffel(child)]
+    pub build: BuildSection,
+
+    #[knuffel(children(name = "files"))]
+    pub files: Vec<FileNode>,
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct FileNode {
+    #[knuffel(child, unwrap(argument))]
+    pub include: String,
+}
 
 #[cfg(test)]
 mod tests {
@@ -340,10 +402,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_one() -> miette::Result<()> {
-        let bundle_path = Path::new("../packages/openssl/package.kdl");
-        let package_document_string = read_to_string(&bundle_path).into_diagnostic()?;
-        let _p = knuffel::parse::<Package>("openssl", &package_document_string)?;
+    fn parse_openssl() -> miette::Result<()> {
+        let bundle_path = Path::new("../packages/openssl");
+        let _b = Bundle::new(bundle_path)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_binutils_gdb() -> miette::Result<()> {
+        let bundle_path = Path::new("../packages/binutils-gdb");
+        let _b = Bundle::new(bundle_path)?;
 
         Ok(())
     }

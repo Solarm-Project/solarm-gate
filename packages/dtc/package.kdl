@@ -1,6 +1,5 @@
 name "dtc"
 
-sources {
+source {
     archive "https://git.kernel.org/pub/scm/utils/dtc/dtc.git/snapshot/dtc-1.6.1.tar.gz" sha512="d0ffe2fc6cf26ecc6a1e9f7692dae1752eae00508a30de658e6121533a67b4237d486af86200922b5066f9f37844b759a5416f21f000603c47b61628d405da0b"
 }
-
