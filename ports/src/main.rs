@@ -4,7 +4,7 @@ mod download;
 mod unpack;
 mod workspace;
 
-use bundle::{Bundle, SourceNode};
+use bundle::{Bundle, SourceSection};
 use clap::{Parser, Subcommand, ValueEnum};
 use commands::{handle_command, workspace::handle_workspace, ShellCommands};
 use config::Config;
@@ -41,7 +41,22 @@ enum Command {
     Build {
         #[arg(long = "step", short)]
         stop_on_step: Option<BuildSteps>,
+
+        /// Perform a build that creates cross build compatible tools and install them into the following prefix on this host
+        #[arg(long = "cross", short)]
+        cross_prefix: Option<PathBuf>,
+
+        /// Select the triple for the Cross Build it must be a supported option
+        #[arg(long, short)]
+        cross_triple: Option<CrossTriple>,
     },
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub(crate) enum CrossTriple {
+    Arm,
+    Riscv,
+    Sparc,
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
@@ -184,7 +199,11 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Command::Build { stop_on_step } => {
+        Command::Build {
+            stop_on_step,
+            cross_prefix,
+            cross_triple,
+        } => {
             let wks = conf.get_current_wks()?;
 
             let path = if let Some(package) = cli.package {
@@ -199,15 +218,14 @@ fn main() -> Result<()> {
 
             let package_bundle = Bundle::new(path)?;
 
-            let sources: Vec<SourceNode> = package_bundle
+            let sources: Vec<SourceSection> = package_bundle
                 .package_document
                 .sections
                 .iter()
                 .filter_map(|section| match section {
-                    bundle::Section::Source(src) => Some(src.sources.clone()),
+                    bundle::Section::Source(src) => Some(src.clone()),
                     _ => None,
                 })
-                .flatten()
                 .collect();
 
             download::download_and_verify(&wks, sources.as_slice())?;
@@ -218,7 +236,12 @@ fn main() -> Result<()> {
                 }
             }
 
-            unpack::unpack_sources(&wks, sources.as_slice())?;
+            unpack::unpack_sources(
+                &wks,
+                Some(package_bundle.package_document.name.clone()),
+                package_bundle.get_path(),
+                sources.as_slice(),
+            )?;
 
             //TODO: patch
 

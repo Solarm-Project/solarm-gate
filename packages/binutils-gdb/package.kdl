@@ -4,11 +4,11 @@ source {
 	git "https://github.com/richlowe/binutils-gdb" branch="illumos-arm64"
 }
 
-sysroot {
-	build "configure" {
+build "configure" {
+	cross "arm" {
 		option "with-sysroot"
 		option "target=aarch64-solaris2.11"
 		option "enable-initfini-array"
-		flag "-I/usr/include/gmp"
 	}
+	flag "-I/usr/include/gmp"
 }

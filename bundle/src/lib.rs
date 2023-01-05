@@ -94,11 +94,11 @@ impl Bundle {
             self.kdl_doc.as_mut().unwrap()
         };
 
-        if kdl_doc.get("sources").is_none() {
-            kdl_doc.nodes_mut().push(kdl::KdlNode::new("sources"))
+        if kdl_doc.get("source").is_none() {
+            kdl_doc.nodes_mut().push(kdl::KdlNode::new("source"))
         }
 
-        let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("sources").unwrap();
+        let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("source").unwrap();
         let src_nodes = src_node.ensure_children();
 
         match node {
@@ -178,7 +178,6 @@ pub struct Package {
 #[derive(Debug, knuffel::Decode, Clone)]
 pub enum Section {
     Source(SourceSection),
-    Sysroot(SysrootSection),
     Build(BuildSection),
 }
 
@@ -248,7 +247,7 @@ pub struct FileSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
     #[knuffel(argument)]
-    pub target_path: Option<PathBuf>,
+    target_path: Option<PathBuf>,
 }
 
 impl FileSource {
@@ -257,6 +256,18 @@ impl FileSource {
             bundle_path: bundle_path.as_ref().to_path_buf(),
             target_path: target_path.as_ref().map(|p| p.as_ref().to_path_buf()),
         })
+    }
+
+    pub fn get_bundle_path<P: AsRef<Path>>(&self, base_path: P) -> PathBuf {
+        base_path.as_ref().join(&self.bundle_path)
+    }
+
+    pub fn get_target_path(&self) -> PathBuf {
+        if let Some(p) = &self.target_path {
+            p.clone()
+        } else {
+            self.bundle_path.clone()
+        }
     }
 }
 
@@ -278,6 +289,10 @@ impl PatchSource {
             drop_directories,
         })
     }
+
+    pub fn get_bundle_path<P: AsRef<Path>>(&self, base_path: P) -> PathBuf {
+        base_path.as_ref().join(&self.bundle_path)
+    }
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]
@@ -291,6 +306,10 @@ impl OverlaySource {
         Ok(Self {
             bundle_path: bundle_path.as_ref().to_path_buf(),
         })
+    }
+
+    pub fn get_bundle_path<P: AsRef<Path>>(&self, base_path: P) -> PathBuf {
+        base_path.as_ref().join(&self.bundle_path)
     }
 }
 
@@ -336,15 +355,6 @@ pub struct BuildFlagNode {
 pub struct BuildOptionNode {
     #[knuffel(argument)]
     pub option: String,
-}
-
-#[derive(Debug, knuffel::Decode, Clone)]
-pub struct SysrootSection {
-    #[knuffel(child)]
-    pub build: BuildSection,
-
-    #[knuffel(children(name = "files"))]
-    pub files: Vec<FileNode>,
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]

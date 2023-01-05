@@ -67,6 +67,14 @@ impl Workspace {
         let name_path = self.path.file_name().unwrap();
         name_path.to_string_lossy().to_string()
     }
+
+    pub fn get_or_create_build_dir(&self) -> Result<PathBuf> {
+        let p = self.path.join("build");
+        if !p.exists() {
+            DirBuilder::new().recursive(true).create(&p)?;
+        }
+        Ok(p)
+    }
 }
 
 pub struct DownloadFile(PathBuf, std::fs::File, sha2::Sha512, Option<String>);
@@ -93,7 +101,6 @@ impl DownloadFile {
         self.0.clone().to_path_buf()
     }
 
-    #[allow(dead_code)]
     pub fn exists(&self) -> bool {
         self.0.exists()
     }

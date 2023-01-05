@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bundle = { version = "0.1.0", path = "../bundle" }
 clap = { version = "4.0.29", features = ["derive"] }
+compress-tools = { version = "0.14.0", features = ["blocking"] }
 curl = "0.4.44"
 directories = "4.0.1"
 fs_extra = "1.2.0"

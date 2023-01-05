@@ -4,72 +4,75 @@ use crate::{
     config::Config,
     workspace::{DownloadFile, Workspace},
 };
-use bundle::SourceNode;
+use bundle::SourceSection;
 use curl::easy::Easy2;
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-pub(crate) fn download_and_verify(wks: &Workspace, sources: &[SourceNode]) -> Result<()> {
-    for src in sources {
-        match src {
-            bundle::SourceNode::Archive(archive) => {
-                let url: url::Url = archive
-                    .src
-                    .parse()
-                    .into_diagnostic()
-                    .wrap_err("could not parse archive src argument as url")?;
+pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection]) -> Result<()> {
+    for section in src_sections {
+        for src in &section.sources {
+            match src {
+                bundle::SourceNode::Archive(archive) => {
+                    let url: url::Url = archive
+                        .src
+                        .parse()
+                        .into_diagnostic()
+                        .wrap_err("could not parse archive src argument as url")?;
 
-                let local_file = wks.get_file_path(url.clone())?;
+                    let local_file = wks.get_file_path(url.clone())?;
 
-                let file_name = local_file.file_name().ok_or(miette::miette!("Archive must have a file_name. A Folder with / at the end can not be an archive"))?;
-                let archive_path = Config::get_or_create_archives_dir()?.join(Path::new(file_name));
+                    let file_name = local_file.file_name().ok_or(miette::miette!("Archive must have a file_name. A Folder with / at the end can not be an archive"))?;
+                    let archive_path =
+                        Config::get_or_create_archives_dir()?.join(Path::new(file_name));
 
-                if !archive_path.exists() {
-                    println!("Downloading {}", url.to_string());
-                    let mut easy = Easy2::new(wks.open_local_file(url.clone())?);
-                    easy.get(true).into_diagnostic()?;
-                    easy.url(&url.to_string()).into_diagnostic()?;
-                    easy.progress(true).into_diagnostic()?;
-                    easy.perform().into_diagnostic()?;
-                    let local_file = { easy.get_mut() as &mut DownloadFile };
-                    let downloaded_file_hash = local_file.get_hash();
-                    if downloaded_file_hash == archive.sha512 {
-                        println!("Success, checksums match");
-                        let local_path = local_file.get_path();
-                        drop(local_file);
-                        fs::copy(&local_path, archive_path).into_diagnostic()?;
-                        fs::remove_file(&local_path).into_diagnostic()?;
-                    } else {
-                        return Err(miette::miette!(format!(
-                            "checksum missmatch for archive {}, expected: {}, actual {}",
-                            url.to_string(),
-                            archive.sha512,
-                            downloaded_file_hash
-                        )));
-                    }
-                } else {
-                    println!("File {} exists skipping", local_file.display());
-                }
-            }
-            bundle::SourceNode::Git(git) => {
-                let git_prefix = &git.get_repo_prefix();
-                let git_repo_path = &wks.get_download_dir().join(&git_prefix);
-                let archive_path = Config::get_or_create_archives_dir()?
-                    .join(&git_prefix)
-                    .with_extension("tar.gz");
-
-                if !archive_path.exists() {
-                    if !git_repo_path.exists() {
-                        if git.archive.is_some() {
-                            git_archive_get(wks, &git)?;
+                    if !archive_path.exists() {
+                        println!("Downloading {}", url.to_string());
+                        let mut easy = Easy2::new(wks.open_local_file(url.clone())?);
+                        easy.get(true).into_diagnostic()?;
+                        easy.url(&url.to_string()).into_diagnostic()?;
+                        easy.progress(true).into_diagnostic()?;
+                        easy.perform().into_diagnostic()?;
+                        let local_file = { easy.get_mut() as &mut DownloadFile };
+                        let downloaded_file_hash = local_file.get_hash();
+                        if downloaded_file_hash == archive.sha512 {
+                            println!("Success, checksums match");
+                            let local_path = local_file.get_path();
+                            drop(local_file);
+                            fs::copy(&local_path, archive_path).into_diagnostic()?;
+                            fs::remove_file(&local_path).into_diagnostic()?;
                         } else {
-                            git_clone_get(wks, &git)?;
+                            return Err(miette::miette!(format!(
+                                "checksum missmatch for archive {}, expected: {}, actual {}",
+                                url.to_string(),
+                                archive.sha512,
+                                downloaded_file_hash
+                            )));
                         }
                     } else {
-                        make_git_archive(wks, &git)?;
+                        println!("File {} exists skipping", local_file.display());
                     }
                 }
+                bundle::SourceNode::Git(git) => {
+                    let git_prefix = &git.get_repo_prefix();
+                    let git_repo_path = &wks.get_download_dir().join(&git_prefix);
+                    let archive_path = Config::get_or_create_archives_dir()?
+                        .join(&git_prefix)
+                        .with_extension("tar.gz");
+
+                    if !archive_path.exists() {
+                        if !git_repo_path.exists() {
+                            if git.archive.is_some() {
+                                git_archive_get(wks, &git)?;
+                            } else {
+                                git_clone_get(wks, &git)?;
+                            }
+                        } else {
+                            make_git_archive(wks, &git)?;
+                        }
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
     Ok(())
