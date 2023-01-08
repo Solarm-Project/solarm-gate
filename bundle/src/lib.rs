@@ -171,14 +171,10 @@ impl Bundle {
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
-    #[knuffel(children)]
-    pub sections: Vec<Section>,
-}
-
-#[derive(Debug, knuffel::Decode, Clone)]
-pub enum Section {
-    Source(SourceSection),
-    Build(BuildSection),
+    #[knuffel(children(name = "source"))]
+    pub sources: Vec<SourceSection>,
+    #[knuffel(child)]
+    pub build: BuildSection,
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]
@@ -316,16 +312,33 @@ impl OverlaySource {
 #[derive(Debug, Default, knuffel::Decode, Clone)]
 pub struct BuildSection {
     #[knuffel(argument, str)]
-    pub build_type: BuildType,
+    pub build_type: String,
     #[knuffel(children(name = "option"))]
     pub options: Vec<BuildOptionNode>,
     #[knuffel(children(name = "flag"))]
     pub flags: Vec<BuildFlagNode>,
+    #[knuffel(children(name = "cross-tool"))]
+    pub cross_tool_options: Vec<BuildSection>,
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]
 pub enum BuildType {
     Configure,
+    CMake,
+    Meson,
+}
+
+impl TryInto<BuildType> for String {
+    type Error = BundleError;
+
+    fn try_into(self) -> Result<BuildType, Self::Error> {
+        match self.as_str() {
+            "configure" => Ok(BuildType::Configure),
+            "meson" => Ok(BuildType::Meson),
+            "cmake" => Ok(BuildType::CMake),
+            x => Err(BundleError::UnknownBuildType(x.to_string())),
+        }
+    }
 }
 
 impl Default for BuildType {

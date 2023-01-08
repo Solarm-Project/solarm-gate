@@ -54,7 +54,7 @@ pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection
                 }
                 bundle::SourceNode::Git(git) => {
                     let git_prefix = &git.get_repo_prefix();
-                    let git_repo_path = &wks.get_download_dir().join(&git_prefix);
+                    let git_repo_path = &wks.get_or_create_download_dir()?.join(&git_prefix);
                     let archive_path = Config::get_or_create_archives_dir()?
                         .join(&git_prefix)
                         .with_extension("tar.gz");
@@ -83,7 +83,7 @@ fn git_clone_get(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
 
     let repo_prefix = git.get_repo_prefix();
 
-    git_cmd.current_dir(&wks.get_download_dir());
+    git_cmd.current_dir(&wks.get_or_create_download_dir()?);
     git_cmd.arg("clone");
     git_cmd.arg("--single-branch");
     if let Some(tag) = &git.tag {
@@ -113,10 +113,10 @@ fn make_git_archive(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
     let repo_prefix = git.get_repo_prefix();
 
     let mut archive_cmd = Command::new("git");
-    archive_cmd.current_dir(&wks.get_download_dir().join(&repo_prefix));
+    archive_cmd.current_dir(&wks.get_or_create_download_dir()?.join(&repo_prefix));
     archive_cmd.arg("archive");
     archive_cmd.arg("--format=tar.gz");
-    let prefix_arg = format!("--prefix={}", &repo_prefix);
+    let prefix_arg = format!("--prefix={}/", &repo_prefix);
     let output_arg = format!(
         "--output={}",
         Config::get_or_create_archives_dir()?
@@ -156,7 +156,7 @@ fn git_archive_get(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
     );
     let remote_arg = format!("--remote={}", &git.repository);
 
-    git_cmd.current_dir(&wks.get_download_dir());
+    git_cmd.current_dir(&wks.get_or_create_download_dir()?);
     git_cmd.arg("archive");
     git_cmd.arg("--format=tar.gz");
     git_cmd.arg(prefix_arg);

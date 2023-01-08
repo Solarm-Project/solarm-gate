@@ -106,6 +106,18 @@ impl Config {
         Ok(archive_dir.to_path_buf())
     }
 
+    pub fn get_workspace_from(&self, name: &str) -> Result<Workspace> {
+        let base_path = if let Some(base_path) = &self.base_path {
+            Path::new(base_path).to_path_buf()
+        } else {
+            Self::get_or_create_data_dir()?
+        };
+
+        let wks = Workspace::new(base_path.join(name))?;
+
+        Ok(wks)
+    }
+
     pub fn get_current_wks(&self) -> Result<Workspace> {
         let current = if let Some(current) = &self.current {
             current.clone()

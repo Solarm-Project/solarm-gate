@@ -1,5 +1,6 @@
 [workspace]
-members = [
- "bundle",
- "ports"
-]
+members = ["bundle", "ports"]
+
+
+[patch.crates-io]
+compress-tools = { git = "https://github.com/Toasterson/compress-tools-rs" }

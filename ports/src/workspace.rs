@@ -28,20 +28,23 @@ pub struct Workspace {
 
 impl Workspace {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        Ok(Self {
-            path: path.as_ref().to_path_buf(),
-        })
+        if !path.as_ref().exists() {
+            DirBuilder::new().recursive(true).create(path.as_ref())?;
+        }
+        let full_path = std::fs::canonicalize(path.as_ref())?;
+        Ok(Self { path: full_path })
     }
 
-    pub fn get_download_dir(&self) -> PathBuf {
-        self.path.join("downloads")
-    }
-
-    pub fn get_file_path(&self, url: url::Url) -> Result<PathBuf> {
-        let download_dir = self.get_download_dir();
+    pub fn get_or_create_download_dir(&self) -> Result<PathBuf> {
+        let download_dir = self.path.join("downloads");
         if !download_dir.exists() {
             DirBuilder::new().recursive(true).create(&download_dir)?;
         }
+        Ok(download_dir)
+    }
+
+    pub fn get_file_path(&self, url: url::Url) -> Result<PathBuf> {
+        let download_dir = self.get_or_create_download_dir()?;
         Ok(download_dir.join(
             Path::new(url.path())
                 .file_name()
@@ -50,10 +53,7 @@ impl Workspace {
     }
 
     pub fn open_local_file(&self, url: url::Url) -> Result<DownloadFile> {
-        let download_dir = self.get_download_dir();
-        if !download_dir.exists() {
-            DirBuilder::new().recursive(true).create(&download_dir)?;
-        }
+        let download_dir = self.get_or_create_download_dir()?;
         DownloadFile::new(
             download_dir.join(
                 Path::new(url.path())
@@ -101,6 +101,7 @@ impl DownloadFile {
         self.0.clone().to_path_buf()
     }
 
+    #[allow(dead_code)]
     pub fn exists(&self) -> bool {
         self.0.exists()
     }

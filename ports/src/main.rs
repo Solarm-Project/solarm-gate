@@ -1,6 +1,10 @@
 mod commands;
+mod compile;
 mod config;
+mod configure;
 mod download;
+mod env;
+mod install;
 mod unpack;
 mod workspace;
 
@@ -20,6 +24,11 @@ use thiserror::Error;
 struct Cli {
     #[arg(long = "package", short = 'p')]
     package: Option<PathBuf>,
+
+    /// Allows one to change the workspace for this operation only. Intended for the CI usecase so that
+    /// multiple jobs can be run simultaneously
+    #[arg(long, short)]
+    workspace: Option<String>,
 
     #[command(subcommand)]
     command: Command,
@@ -43,27 +52,39 @@ enum Command {
         stop_on_step: Option<BuildSteps>,
 
         /// Perform a build that creates cross build compatible tools and install them into the following prefix on this host
-        #[arg(long = "cross", short)]
+        #[arg(long)]
         cross_prefix: Option<PathBuf>,
 
         /// Select the triple for the Cross Build it must be a supported option
-        #[arg(long, short)]
+        #[arg(long)]
         cross_triple: Option<CrossTriple>,
+
+        #[arg(long, default_value = "false")]
+        clean: bool,
     },
 }
 
 #[derive(Debug, ValueEnum, Clone)]
-pub(crate) enum CrossTriple {
+pub enum CrossTriple {
     Arm,
     Riscv,
     Sparc,
+}
+
+impl ToString for CrossTriple {
+    fn to_string(&self) -> String {
+        match self {
+            CrossTriple::Arm => String::from("arm"),
+            CrossTriple::Riscv => String::from("riscv"),
+            CrossTriple::Sparc => String::from("sparc"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum BuildSteps {
     Download,
     Unpack,
-    Patch,
     Configure,
     Build,
     Install,
@@ -75,6 +96,14 @@ pub(crate) enum BuildSteps {
 enum PortsError {
     #[error("can not get basename of the package: does it exist?")]
     CannotGetBaseNameOfPackage,
+}
+
+pub fn derive_source_name(package_name: String, src: &SourceSection) -> String {
+    if let Some(name) = &src.name {
+        name.clone().to_string()
+    } else {
+        package_name
+    }
 }
 
 fn main() -> Result<()> {
@@ -203,8 +232,18 @@ fn main() -> Result<()> {
             stop_on_step,
             cross_prefix,
             cross_triple,
+            clean,
         } => {
-            let wks = conf.get_current_wks()?;
+            let wks = if let Some(wks_path) = cli.workspace {
+                conf.get_workspace_from(&wks_path)?
+            } else {
+                conf.get_current_wks()?
+            };
+
+            if clean {
+                std::fs::remove_dir_all(wks.get_or_create_download_dir()?).into_diagnostic()?;
+                std::fs::remove_dir_all(wks.get_or_create_build_dir()?).into_diagnostic()?;
+            }
 
             let path = if let Some(package) = cli.package {
                 package
@@ -218,38 +257,57 @@ fn main() -> Result<()> {
 
             let package_bundle = Bundle::new(path)?;
 
-            let sources: Vec<SourceSection> = package_bundle
-                .package_document
-                .sections
-                .iter()
-                .filter_map(|section| match section {
-                    bundle::Section::Source(src) => Some(src.clone()),
-                    _ => None,
-                })
-                .collect();
+            let sources: Vec<SourceSection> = package_bundle.package_document.sources.clone();
 
             download::download_and_verify(&wks, sources.as_slice())?;
 
-            if let Some(stop_on_step) = stop_on_step {
-                if stop_on_step == BuildSteps::Download {
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Download {
                     return Ok(());
                 }
             }
 
             unpack::unpack_sources(
                 &wks,
-                Some(package_bundle.package_document.name.clone()),
+                package_bundle.package_document.name.clone(),
                 package_bundle.get_path(),
                 sources.as_slice(),
             )?;
 
-            //TODO: patch
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Unpack {
+                    return Ok(());
+                }
+            }
 
-            //TODO: configure
+            configure::configure_package_sources(
+                &wks,
+                &package_bundle,
+                cross_prefix,
+                cross_triple,
+            )?;
 
-            //TODO: build
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Configure {
+                    return Ok(());
+                }
+            }
 
-            //TODO: install
+            compile::run_compile(&wks, &package_bundle)?;
+
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Build {
+                    return Ok(());
+                }
+            }
+
+            install::run_install(&wks, &package_bundle)?;
+
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Install {
+                    return Ok(());
+                }
+            }
 
             //TODO: mogrify
 

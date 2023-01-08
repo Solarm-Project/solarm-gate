@@ -5,7 +5,7 @@ source {
 }
 
 build "configure" {
-	cross "arm" {
+	cross-tool "arm" {
 		option "with-sysroot"
 		option "target=aarch64-solaris2.11"
 		option "enable-initfini-array"

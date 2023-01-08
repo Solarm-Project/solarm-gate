@@ -7,21 +7,11 @@ use std::{
 use bundle::SourceSection;
 use miette::{IntoDiagnostic, Result};
 
-use crate::{config::Config, workspace::Workspace};
-
-fn derive_source_name(package_name: Option<String>, index: usize, src: &SourceSection) -> String {
-    if let Some(name) = &src.name {
-        name.clone().to_string()
-    } else if let Some(package_name) = package_name {
-        package_name
-    } else {
-        format!("build_{}", index)
-    }
-}
+use crate::{config::Config, derive_source_name, workspace::Workspace};
 
 pub fn unpack_sources<P: AsRef<Path>>(
     wks: &Workspace,
-    package_name: Option<String>,
+    package_name: String,
     bundle_path: P,
     sources: &[SourceSection],
 ) -> Result<()> {
@@ -29,8 +19,8 @@ pub fn unpack_sources<P: AsRef<Path>>(
     let build_dir = wks.get_or_create_build_dir()?;
     std::env::set_current_dir(&build_dir).into_diagnostic()?;
 
-    for (index, source) in sources.into_iter().enumerate() {
-        let unpack_name = derive_source_name(package_name.clone(), index, &source);
+    for source in sources {
+        let unpack_name = derive_source_name(package_name.clone(), &source);
         let unpack_path = build_dir.join(&unpack_name);
 
         for src in &source.sources {
@@ -44,13 +34,13 @@ pub fn unpack_sources<P: AsRef<Path>>(
                     let archive_path =
                         Config::get_or_create_archives_dir()?.join(Path::new(file_name));
 
-                    archive_unpack(&archive_path, &unpack_path)?;
+                    archive_unpack(&archive_path, &unpack_path, &package_name)?;
                 }
                 bundle::SourceNode::Git(git_src) => {
                     let file_name = format!("{}.tar.gz", git_src.get_repo_prefix());
                     let archive_path =
                         Config::get_or_create_archives_dir()?.join(Path::new(&file_name));
-                    archive_unpack(&archive_path, &unpack_path)?;
+                    archive_unpack(&archive_path, &unpack_path, &package_name)?;
                 }
                 bundle::SourceNode::File(file) => {
                     let src_path = file.get_bundle_path(bundle_path);
@@ -93,7 +83,7 @@ pub fn unpack_sources<P: AsRef<Path>>(
     Ok(())
 }
 
-fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P) -> Result<()> {
+fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P, name: &str) -> Result<()> {
     let local_file = local_file.as_ref();
     let final_path = final_path.as_ref();
     if !local_file.exists() {
@@ -103,9 +93,16 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P) -> Result<()> {
         )));
     }
 
+    if final_path.exists() {
+        println!("Archive for {} already extracted skipping", name);
+        return Ok(());
+    }
+
     let tmp_dir_path = Path::new("tmp.unpack");
     if !tmp_dir_path.exists() {
         DirBuilder::new().create(tmp_dir_path).into_diagnostic()?;
+    } else {
+        std::fs::remove_dir_all(&tmp_dir_path).into_diagnostic()?;
     }
 
     use compress_tools::*;
@@ -128,6 +125,8 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P) -> Result<()> {
         .ok_or(miette::miette!("no directories extracted"))?;
 
     std::fs::rename(&extracted_dir, final_path).into_diagnostic()?;
+
+    std::fs::remove_dir(tmp_dir_path).into_diagnostic()?;
 
     Ok(())
 }

@@ -217,8 +217,7 @@ dependencies = [
 [[package]]
 name = "compress-tools"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a3b1511783270e75d95749c851008a01fba662a8136e488d29d2b3a51a56e08"
+source = "git+https://github.com/Toasterson/compress-tools-rs#8c0f8f5ec0a4de8f226496f74ded5f32c05c977b"
 dependencies = [
  "blocking",
  "derive_more",
