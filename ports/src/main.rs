@@ -5,6 +5,7 @@ mod configure;
 mod download;
 mod env;
 mod install;
+mod ips;
 mod unpack;
 mod workspace;
 
@@ -53,7 +54,7 @@ enum Command {
 
         /// Perform a build that creates cross build compatible tools and install them into the following prefix on this host
         #[arg(long)]
-        cross_prefix: Option<PathBuf>,
+        prefix: Option<PathBuf>,
 
         /// Select the triple for the Cross Build it must be a supported option
         #[arg(long)]
@@ -100,9 +101,9 @@ enum PortsError {
 
 pub fn derive_source_name(package_name: String, src: &SourceSection) -> String {
     if let Some(name) = &src.name {
-        name.clone().to_string()
+        name.clone().replace("/", "_").to_string()
     } else {
-        package_name
+        package_name.replace("/", "_")
     }
 }
 
@@ -230,7 +231,7 @@ fn main() -> Result<()> {
         }
         Command::Build {
             stop_on_step,
-            cross_prefix,
+            prefix: cross_prefix,
             cross_triple,
             clean,
         } => {
@@ -241,8 +242,18 @@ fn main() -> Result<()> {
             };
 
             if clean {
-                std::fs::remove_dir_all(wks.get_or_create_download_dir()?).into_diagnostic()?;
-                std::fs::remove_dir_all(wks.get_or_create_build_dir()?).into_diagnostic()?;
+                std::fs::remove_dir_all(wks.get_or_create_download_dir()?)
+                    .into_diagnostic()
+                    .wrap_err("could not clean the download directory")?;
+                std::fs::remove_dir_all(wks.get_or_create_build_dir()?)
+                    .into_diagnostic()
+                    .wrap_err("could not clean the build directory")?;
+                std::fs::remove_dir_all(wks.get_or_create_prototype_dir()?)
+                    .into_diagnostic()
+                    .wrap_err("could not clean the prototype directory")?;
+                std::fs::remove_dir_all(wks.get_or_create_manifest_dir()?)
+                    .into_diagnostic()
+                    .wrap_err("could not clean the manifest directory")?;
             }
 
             let path = if let Some(package) = cli.package {
@@ -259,7 +270,8 @@ fn main() -> Result<()> {
 
             let sources: Vec<SourceSection> = package_bundle.package_document.sources.clone();
 
-            download::download_and_verify(&wks, sources.as_slice())?;
+            download::download_and_verify(&wks, sources.as_slice())
+                .wrap_err("download and verify failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Download {
@@ -272,7 +284,8 @@ fn main() -> Result<()> {
                 package_bundle.package_document.name.clone(),
                 package_bundle.get_path(),
                 sources.as_slice(),
-            )?;
+            )
+            .wrap_err("unpack step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Unpack {
@@ -280,12 +293,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            configure::configure_package_sources(
-                &wks,
-                &package_bundle,
-                cross_prefix,
-                cross_triple,
-            )?;
+            configure::configure_package_sources(&wks, &package_bundle, cross_prefix, cross_triple)
+                .wrap_err("configure step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Configure {
@@ -293,7 +302,7 @@ fn main() -> Result<()> {
                 }
             }
 
-            compile::run_compile(&wks, &package_bundle)?;
+            compile::run_compile(&wks, &package_bundle).wrap_err("compilation step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Build {
@@ -301,7 +310,7 @@ fn main() -> Result<()> {
                 }
             }
 
-            install::run_install(&wks, &package_bundle)?;
+            install::run_install(&wks, &package_bundle).wrap_err("installation step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Install {
@@ -309,7 +318,20 @@ fn main() -> Result<()> {
                 }
             }
 
-            //TODO: mogrify
+            ips::run_generate_filelist(&wks, &package_bundle)
+                .wrap_err("generating filelist failed")?;
+            ips::run_mogrify(&wks, &package_bundle).wrap_err("mogrify failed")?;
+            ips::run_generate_pkgdepend(&wks, &package_bundle)
+                .wrap_err("failed to generate dependency entries")?;
+            ips::run_resolve_dependencies(&wks, &package_bundle)
+                .wrap_err("failed to resolve dependencies")?;
+            ips::run_lint(&wks, &package_bundle).wrap_err("lint failed")?;
+
+            if let Some(stop_on_step) = &stop_on_step {
+                if stop_on_step == &BuildSteps::Mogrify {
+                    return Ok(());
+                }
+            }
 
             //TODO: publish
 

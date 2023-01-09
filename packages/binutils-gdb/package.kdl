@@ -1,4 +1,11 @@
-name "binutils-gdb"
+name "developer/gnu-binutils"
+summary "GNU collection of binary tools like ld, as"
+classification "Development/GNU"
+version "2.39"
+license-file "COPYING"
+license "GPLv3, FDLv1.3"
+project-url "https://www.gnu.org/software/binutils/"
+prefix "/usr/gnu"
 
 source {
 	git "https://github.com/richlowe/binutils-gdb" branch="illumos-arm64"
@@ -12,3 +19,7 @@ build "configure" {
 	}
 	flag "-I/usr/include/gmp"
 }
+
+dependency "library/msgpack"
+dependency "library/zlib"
+dependency "system/library"

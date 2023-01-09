@@ -111,23 +111,33 @@ fn configure_using_automake(
         }
         let prefix = std::fs::canonicalize(&prefix).into_diagnostic()?;
         option_vec.push(format!("--prefix={}", prefix.to_string_lossy().to_string()));
+    } else if let Some(prefix) = pkg.package_document.prefix.clone() {
+        option_vec.push(format!("--prefix={}", prefix));
     }
 
     for (env_key, env_var) in dotenv_env {
         env_flags.insert(env_key, env_var);
     }
 
+    let proto_dir_path = wks.get_or_create_prototype_dir()?;
+    let proto_dir_str = proto_dir_path.to_string_lossy().to_string();
+
+    env_flags.insert(String::from("DESTDIR"), proto_dir_str.clone());
+    let destdir_arg = format!("DESTDIR={}", &proto_dir_str);
+
     let mut configure_cmd = Command::new("./configure");
     configure_cmd.env_clear();
     configure_cmd.envs(&env_flags);
     configure_cmd.args(&option_vec);
+    configure_cmd.arg(&destdir_arg);
 
     configure_cmd.stdin(Stdio::null());
     configure_cmd.stdout(Stdio::inherit());
 
     println!(
-        "Running ./configure with options {}; env=[{}]",
+        "Running ./configure with options {}; {}; env=[{}]",
         option_vec.join(" "),
+        destdir_arg,
         env_flags
             .into_iter()
             .map(|(k, v)| format!("{}={}", k, v))

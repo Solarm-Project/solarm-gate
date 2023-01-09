@@ -45,18 +45,26 @@ pub fn run_install(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         env_flags.insert(env_key, env_val);
     }
 
+    let proto_dir_path = wks.get_or_create_prototype_dir()?;
+    let proto_dir_str = proto_dir_path.to_string_lossy().to_string();
+
+    env_flags.insert(String::from("DESTDIR"), proto_dir_str.clone());
+    let destdir_arg = format!("DESTDIR={}", &proto_dir_str);
+
     let mut build_cmd = Command::new(build_tool.to_string());
     build_cmd.env_clear();
     build_cmd.arg("install");
     build_cmd.envs(&env_flags);
+    build_cmd.arg(&destdir_arg);
 
     build_cmd.stdin(Stdio::null());
     build_cmd.stdout(Stdio::inherit());
 
     println!(
-        "Running {} install; env=[{}]",
+        "Running {} install; into DESTDIR={}; env=[{}]",
         //option_vec.join(" "),
         build_tool.to_string(),
+        &proto_dir_str,
         env_flags
             .into_iter()
             .map(|(k, v)| format!("{}={}", k, v))

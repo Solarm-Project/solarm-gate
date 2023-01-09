@@ -5,7 +5,7 @@ use std::{
 };
 
 use bundle::SourceSection;
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, WrapErr};
 
 use crate::{config::Config, derive_source_name, workspace::Workspace};
 
@@ -110,7 +110,9 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P, name: &str) -> R
 
     let archive_file = File::open(local_file).into_diagnostic()?;
 
-    uncompress_archive(archive_file, tmp_dir_path, Ownership::Ignore).into_diagnostic()?;
+    uncompress_archive(archive_file, tmp_dir_path, Ownership::Ignore)
+        .into_diagnostic()
+        .wrap_err("libarchive uncompress")?;
 
     let extracted_dirs = read_dir(tmp_dir_path)
         .into_diagnostic()?
@@ -124,7 +126,15 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P, name: &str) -> R
         .first()
         .ok_or(miette::miette!("no directories extracted"))?;
 
-    std::fs::rename(&extracted_dir, final_path).into_diagnostic()?;
+    println!(
+        "extracted_dir={}; final_path={}",
+        extracted_dir.display(),
+        final_path.display()
+    );
+
+    std::fs::rename(&extracted_dir, final_path)
+        .into_diagnostic()
+        .wrap_err("move extracted directories to build path")?;
 
     std::fs::remove_dir(tmp_dir_path).into_diagnostic()?;
 

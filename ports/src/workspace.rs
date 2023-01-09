@@ -75,6 +75,22 @@ impl Workspace {
         }
         Ok(p)
     }
+
+    pub fn get_or_create_prototype_dir(&self) -> Result<PathBuf> {
+        let p = self.path.join("proto");
+        if !p.exists() {
+            DirBuilder::new().recursive(true).create(&p)?;
+        }
+        Ok(p)
+    }
+
+    pub fn get_or_create_manifest_dir(&self) -> Result<PathBuf> {
+        let p = self.path.join("manifests");
+        if !p.exists() {
+            DirBuilder::new().recursive(true).create(&p)?;
+        }
+        Ok(p)
+    }
 }
 
 pub struct DownloadFile(PathBuf, std::fs::File, sha2::Sha512, Option<String>);

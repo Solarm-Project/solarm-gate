@@ -171,10 +171,40 @@ impl Bundle {
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
+    #[knuffel(child, unwrap(argument))]
+    pub classification: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub summary: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub license_file: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub license: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub prefix: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub version: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub project_url: Option<String>,
     #[knuffel(children(name = "source"))]
     pub sources: Vec<SourceSection>,
     #[knuffel(child)]
     pub build: BuildSection,
+    #[knuffel(children(name = "dependency"))]
+    pub dependencies: Vec<Dependency>,
+    #[knuffel(children(name = "transform"))]
+    pub transforms: Vec<Transform>,
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct Transform {
+    #[knuffel(argument)]
+    pub rule: String,
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct Dependency {
+    #[knuffel(argument)]
+    pub name: String,
 }
 
 #[derive(Debug, knuffel::Decode, Clone)]

@@ -14,6 +14,7 @@ directories = "4.0.1"
 fs_extra = "1.2.0"
 kdl = "4.6.0"
 log = "0.4.17"
+microtemplate = "1.0.3"
 miette = { version = "4.3.0", features = ["fancy"] }
 rustyline = { version = "10.0.0", features = ["case_insensitive_history_search"] }
 serde = { version = "1.0.151", features = ["derive"] }
