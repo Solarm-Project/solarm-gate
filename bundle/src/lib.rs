@@ -604,8 +604,6 @@ pub struct BuildSection {
     pub options: Vec<BuildOptionNode>,
     #[knuffel(children(name = "flag"))]
     pub flags: Vec<BuildFlagNode>,
-    #[knuffel(children(name = "cross-tool"))]
-    pub cross_tool_options: Vec<BuildSection>,
     #[knuffel(children(name = "script"))]
     pub scripts: Vec<ScriptNode>,
     #[knuffel(child)]
@@ -724,9 +722,6 @@ impl BuildSection {
         let mut node = kdl::KdlNode::new("build");
         node.insert(0, self.build_type.to_string().as_str());
         let doc = node.ensure_children();
-        for cross_options in &self.cross_tool_options {
-            doc.nodes_mut().push(cross_options.to_node());
-        }
 
         for option in &self.options {
             doc.nodes_mut().push(option.to_node());

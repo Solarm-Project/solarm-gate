@@ -48,6 +48,20 @@ pub struct Gate {
     pub transforms: Vec<Transform>,
 }
 
+impl Default for Gate {
+    fn default() -> Self {
+        Self {
+            path: PathBuf::new(),
+            name: String::new(),
+            version: String::from("0.5.11"),
+            branch: String::from("2023.0.0"),
+            distribution: None,
+            packages: vec![],
+            transforms: vec![],
+        }
+    }
+}
+
 impl Gate {
     pub fn new<P: AsRef<Path>>(path: P) -> miette::Result<Self> {
         let path = if !path.as_ref().is_absolute() {

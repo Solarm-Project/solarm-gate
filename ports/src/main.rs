@@ -6,6 +6,7 @@ mod download;
 mod env;
 mod install;
 mod ips;
+mod tarball;
 mod unpack;
 mod workspace;
 
@@ -13,6 +14,7 @@ use bundle::{Bundle, SourceSection};
 use clap::{Parser, Subcommand, ValueEnum};
 use commands::{handle_command, workspace::handle_workspace, ShellCommands};
 use config::Config;
+use gate::Gate;
 use miette::{IntoDiagnostic, Result, WrapErr};
 use rustyline::error::ReadlineError;
 use std::{
@@ -21,6 +23,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+use workspace::Workspace;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -272,7 +275,7 @@ fn main() -> Result<()> {
                     .wrap_err("could not clean the manifest directory")?;
             }
 
-            let package_bundle = if let Some(gate_path) = gate {
+            let (package_bundle, gate_data) = if let Some(gate_path) = gate {
                 let gate_data = gate::Gate::new(&gate_path)?;
 
                 let path = if let Some(package) = &package {
@@ -305,7 +308,7 @@ fn main() -> Result<()> {
                     }
                 }
 
-                package_bundle
+                (package_bundle, Some(gate_data))
             } else {
                 let path = if let Some(package) = package {
                     let name = if package.contains("/") {
@@ -323,7 +326,7 @@ fn main() -> Result<()> {
                     path.display()
                 ))?;
 
-                Bundle::open_local(path)?
+                (Bundle::open_local(path)?, None)
             };
 
             let sources: Vec<SourceSection> = package_bundle.package_document.sources.clone();
@@ -360,14 +363,22 @@ fn main() -> Result<()> {
                 }
             }
 
-            ips::run_generate_filelist(&wks, &package_bundle)
-                .wrap_err("generating filelist failed")?;
-            ips::run_mogrify(&wks, &package_bundle).wrap_err("mogrify failed")?;
-            ips::run_generate_pkgdepend(&wks, &package_bundle)
-                .wrap_err("failed to generate dependency entries")?;
-            ips::run_resolve_dependencies(&wks, &package_bundle)
-                .wrap_err("failed to resolve dependencies")?;
-            ips::run_lint(&wks, &package_bundle).wrap_err("lint failed")?;
+            if let Some(gate_data) = gate_data {
+                if let Some(distribution) = &gate_data.distribution {
+                    match distribution.distribution_type {
+                        gate::DistributionType::Tarbball => {
+                            tarball::make_release_tarball(&wks, &package_bundle)?;
+                        }
+                        gate::DistributionType::IPS => {
+                            run_ips_actions(&wks, &package_bundle, Some(gate_data))?;
+                        }
+                    }
+                } else {
+                    run_ips_actions(&wks, &package_bundle, Some(gate_data))?;
+                }
+            } else {
+                run_ips_actions(&wks, &package_bundle, gate_data.clone())?;
+            }
 
             if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::GenerateManifests {
@@ -380,4 +391,14 @@ fn main() -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn run_ips_actions(wks: &Workspace, pkg: &Bundle, gate_data: Option<Gate>) -> miette::Result<()> {
+    ips::run_generate_filelist(wks, pkg).wrap_err("generating filelist failed")?;
+    ips::run_mogrify(wks, pkg, gate_data).wrap_err("mogrify failed")?;
+    ips::run_generate_pkgdepend(wks, pkg).wrap_err("failed to generate dependency entries")?;
+    ips::run_resolve_dependencies(wks, pkg).wrap_err("failed to resolve dependencies")?;
+    ips::run_lint(wks, pkg).wrap_err("lint failed")?;
+
+    Ok(())
 }

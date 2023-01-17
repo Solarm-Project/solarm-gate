@@ -14,11 +14,13 @@ const APP_NAME: &str = "ports";
 const NO_PROJECT_DIR_ERR_STR: &str =
     "no project directory could be derived. Is this cli running on a supported OS?";
 const DEFAULT_WORKSPACE_DIR: &str = "wks";
+const DEFAULT_OUTPUT_DIR_DIR: &str = "output";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     current: Option<String>,
     base_path: Option<String>,
+    output_dir: Option<String>,
 }
 
 impl Config {
@@ -31,6 +33,7 @@ impl Config {
                     Ok(Config {
                         current: Some(DEFAULT_WORKSPACE_DIR.clone().to_string()),
                         base_path: None,
+                        output_dir: None,
                     })
                 } else {
                     Err(x)
@@ -43,7 +46,7 @@ impl Config {
         Ok(config)
     }
 
-    fn get_and_create_config_dir() -> Result<PathBuf> {
+    fn get_or_create_config_dir() -> Result<PathBuf> {
         let proj_dir = ProjectDirs::from(QUALIFIER, ORG, APP_NAME)
             .ok_or(miette::miette!(NO_PROJECT_DIR_ERR_STR))?;
         let config_dir = proj_dir.config_dir();
@@ -57,7 +60,7 @@ impl Config {
     }
 
     fn get_or_create_config_file_handle(write: bool) -> Result<File> {
-        let config_dir = Self::get_and_create_config_dir()?;
+        let config_dir = Self::get_or_create_config_dir()?;
         let config_file_path = config_dir.join("config.json");
         if !config_file_path.exists() {
             let _ = File::create(&config_file_path).into_diagnostic()?;
@@ -104,6 +107,19 @@ impl Config {
                 .into_diagnostic()?;
         }
         Ok(archive_dir.to_path_buf())
+    }
+
+    pub fn get_or_create_output_dir() -> Result<PathBuf> {
+        let proj_dir = ProjectDirs::from(QUALIFIER, ORG, APP_NAME)
+            .ok_or(miette::miette!(NO_PROJECT_DIR_ERR_STR))?;
+        let output_dir = proj_dir.data_dir().join(DEFAULT_OUTPUT_DIR_DIR);
+        if !output_dir.exists() {
+            DirBuilder::new()
+                .recursive(true)
+                .create(&output_dir)
+                .into_diagnostic()?;
+        }
+        Ok(output_dir.to_path_buf())
     }
 
     pub fn get_workspace_from(&self, name: &str) -> Result<Workspace> {

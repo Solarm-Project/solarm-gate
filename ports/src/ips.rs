@@ -3,12 +3,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+use crate::workspace::Workspace;
 use bundle::{Bundle, SourceNode};
 use fs_extra::file::write_all;
+use gate::Gate;
 use microtemplate::{render, Substitutions};
 use miette::{IntoDiagnostic, Result};
-
-use crate::workspace::Workspace;
 
 const DEFAULT_IPS_TEMPLATE: &str = r#"
 #
@@ -89,7 +89,7 @@ pub fn run_generate_filelist(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         Err(miette::miette!("non zero code returned from pkgfmt"))
     }
 }
-pub fn run_mogrify(wks: &Workspace, pkg: &Bundle) -> Result<()> {
+pub fn run_mogrify(wks: &Workspace, pkg: &Bundle, gate: Option<Gate>) -> Result<()> {
     let vars = StringInterpolationVars {
         name: &pkg.get_name(),
         version: &pkg
@@ -97,9 +97,13 @@ pub fn run_mogrify(wks: &Workspace, pkg: &Bundle) -> Result<()> {
             .version
             .clone()
             .unwrap_or(String::from("0.5.11")), //TODO take this default version from the gate
-        build_version: "0.5.11",    //TODO take from gate data
-        branch_version: "2023.0.0", //TODO take from gate data
-        revision: "1",              //TODO take from automation
+        build_version: &gate.clone().unwrap_or(Gate::default()).version,
+        branch_version: &gate.clone().unwrap_or(Gate::default()).branch,
+        revision: &pkg
+            .package_document
+            .revision
+            .clone()
+            .unwrap_or(String::from("1")),
         summary: &pkg
             .package_document
             .summary
