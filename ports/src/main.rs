@@ -386,8 +386,6 @@ fn main() -> Result<()> {
                 }
             }
 
-            //TODO: publish
-
             Ok(())
         }
     }
@@ -400,5 +398,6 @@ fn run_ips_actions(wks: &Workspace, pkg: &Bundle, gate_data: Option<Gate>) -> mi
     ips::run_resolve_dependencies(wks, pkg).wrap_err("failed to resolve dependencies")?;
     ips::run_lint(wks, pkg).wrap_err("lint failed")?;
 
+    //TODO: publish
     Ok(())
 }

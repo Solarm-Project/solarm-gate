@@ -8,7 +8,7 @@ fn derive_output_name(pkg: &Bundle) -> String {
     if let Some(version) = &pkg.package_document.version {
         format!("{}-{}.tar.gz", pkg.get_name().replace("/", "_"), version)
     } else {
-        format!("{}.tar.gz", pkg.get_name())
+        format!("{}.tar.gz", pkg.get_name().replace("/", "_"))
     }
 }
 
