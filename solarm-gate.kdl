@@ -1,0 +1,15 @@
+name "solarm"
+version "0.5.11"
+branch "2023.0.0"
+
+package {
+	name "developer/gnu-binutils"
+	version "2.39"	
+}
+
+package {
+	name "developer/gcc"
+	version "10.3.0"	
+}
+
+

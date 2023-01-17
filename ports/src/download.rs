@@ -8,7 +8,11 @@ use bundle::SourceSection;
 use curl::easy::Easy2;
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection]) -> Result<()> {
+pub(crate) fn download_and_verify(
+    wks: &Workspace,
+    src_sections: &[SourceSection],
+    archive_clean: bool,
+) -> Result<()> {
     for section in src_sections {
         for src in &section.sources {
             match src {
@@ -24,6 +28,10 @@ pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection
                     let file_name = local_file.file_name().ok_or(miette::miette!("Archive must have a file_name. A Folder with / at the end can not be an archive"))?;
                     let archive_path =
                         Config::get_or_create_archives_dir()?.join(Path::new(file_name));
+
+                    if archive_clean {
+                        std::fs::remove_file(&archive_path).ok();
+                    }
 
                     if !archive_path.exists() {
                         println!("Downloading {}", url.to_string());
@@ -59,6 +67,10 @@ pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection
                         .join(&git_prefix)
                         .with_extension("tar.gz");
 
+                    if archive_clean {
+                        std::fs::remove_file(&archive_path).ok();
+                    }
+
                     if !archive_path.exists() {
                         if !git_repo_path.exists() {
                             if git.archive.is_some() {
@@ -67,7 +79,13 @@ pub(crate) fn download_and_verify(wks: &Workspace, src_sections: &[SourceSection
                                 git_clone_get(wks, &git)?;
                             }
                         } else {
-                            make_git_archive(wks, &git)?;
+                            if git.must_stay_as_repo.is_some() {
+                                println!("Creating Archive of full repo");
+                                make_git_archive_with_tar(wks, git)?;
+                            } else {
+                                println!("Creating git-archive based archive from git");
+                                make_git_archive(wks, git)?;
+                            }
                         }
                     }
                 }
@@ -106,7 +124,42 @@ fn git_clone_get(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
         )));
     }
 
-    make_git_archive(wks, git)
+    if git.must_stay_as_repo.is_some() {
+        println!("Creating Archive of full repo");
+        make_git_archive_with_tar(wks, git)
+    } else {
+        println!("Creating git-archive based archive from git");
+        make_git_archive(wks, git)
+    }
+}
+
+fn make_git_archive_with_tar(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
+    let repo_prefix = git.get_repo_prefix();
+
+    let mut archive_cmd = Command::new("gtar");
+    archive_cmd.current_dir(&wks.get_or_create_download_dir()?);
+    archive_cmd.arg("-czf");
+    let archive_name_arg = Config::get_or_create_archives_dir()?
+        .join(&repo_prefix)
+        .with_extension("tar.gz")
+        .to_string_lossy()
+        .to_string();
+    archive_cmd.arg(&archive_name_arg);
+    archive_cmd.arg(&repo_prefix);
+
+    let status = archive_cmd.status().into_diagnostic()?;
+    if status.success() {
+        println!(
+            "Git Archive {}.tar.gz successfully created by way of tar",
+            &repo_prefix
+        );
+        Ok(())
+    } else {
+        Err(miette::miette!(format!(
+            "Could not create archive of {}",
+            &repo_prefix
+        )))
+    }
 }
 
 fn make_git_archive(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {

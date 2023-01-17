@@ -1,7 +1,7 @@
+mod build;
 mod commands;
 mod compile;
 mod config;
-mod configure;
 mod download;
 mod env;
 mod install;
@@ -17,15 +17,13 @@ use miette::{IntoDiagnostic, Result, WrapErr};
 use rustyline::error::ReadlineError;
 use std::{
     fs::create_dir_all,
+    io::Write,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
 
 #[derive(Debug, Parser)]
 struct Cli {
-    #[arg(long = "package", short = 'p')]
-    package: Option<PathBuf>,
-
     /// Allows one to change the workspace for this operation only. Intended for the CI usecase so that
     /// multiple jobs can be run simultaneously
     #[arg(long, short)]
@@ -40,8 +38,15 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Create,
+    Create {
+        #[arg(long, short)]
+        package: Option<PathBuf>,
+        name: String,
+    },
     Edit {
+        #[arg(long, short)]
+        package: Option<PathBuf>,
+
         unmatched: Option<Vec<String>>,
     },
     Workspace {
@@ -52,16 +57,17 @@ enum Command {
         #[arg(long = "step", short)]
         stop_on_step: Option<BuildSteps>,
 
-        /// Perform a build that creates cross build compatible tools and install them into the following prefix on this host
-        #[arg(long)]
-        prefix: Option<PathBuf>,
+        #[arg(long, short)]
+        gate: Option<PathBuf>,
 
-        /// Select the triple for the Cross Build it must be a supported option
-        #[arg(long)]
-        cross_triple: Option<CrossTriple>,
+        #[arg(long, short)]
+        package: Option<String>,
 
         #[arg(long, default_value = "false")]
         clean: bool,
+
+        #[arg(long, default_value = "false")]
+        archive_clean: bool,
     },
 }
 
@@ -86,10 +92,8 @@ impl ToString for CrossTriple {
 pub(crate) enum BuildSteps {
     Download,
     Unpack,
-    Configure,
     Build,
-    Install,
-    Mogrify,
+    GenerateManifests,
     Publish,
 }
 
@@ -138,23 +142,34 @@ fn main() -> Result<()> {
                 commands::workspace::WorkspaceReturn::List(_) => todo!(),
             },
         },
-        Command::Create => {
-            let path = if let Some(package) = cli.package {
+        Command::Create { package, name } => {
+            let path = if let Some(package) = package {
                 package
             } else {
                 Path::new("./").to_path_buf()
             };
+
             if !path.exists() {
                 create_dir_all(&path).into_diagnostic().wrap_err(format!(
                     "could not create package directory {}",
                     path.display()
                 ))?;
             }
+
+            let mut doc = kdl::KdlDocument::new();
+            let mut name_node = kdl::KdlNode::new("name");
+            name_node.insert(0, name.as_str());
+            doc.nodes_mut().push(name_node);
+            let mut pkg_file = std::fs::File::create(path.join("package.kdl")).into_diagnostic()?;
+            pkg_file
+                .write_all(doc.to_string().as_bytes())
+                .into_diagnostic()?;
+
             println!("created package: {}", path.display());
             Ok(())
         }
-        Command::Edit { unmatched } => {
-            let path = if let Some(package) = cli.package {
+        Command::Edit { unmatched, package } => {
+            let path = if let Some(package) = package {
                 package
             } else {
                 Path::new("./").to_path_buf()
@@ -170,7 +185,7 @@ fn main() -> Result<()> {
                 .to_string_lossy()
                 .to_string();
 
-            let mut package_bundle = Bundle::new(path)?;
+            let mut package_bundle = Bundle::open_local(path)?;
 
             if let Some(unmatched) = unmatched {
                 let mut args = vec!["ports"];
@@ -231,9 +246,10 @@ fn main() -> Result<()> {
         }
         Command::Build {
             stop_on_step,
-            prefix: cross_prefix,
-            cross_triple,
             clean,
+            archive_clean,
+            gate,
+            package,
         } => {
             let wks = if let Some(wks_path) = cli.workspace {
                 conf.get_workspace_from(&wks_path)?
@@ -256,21 +272,63 @@ fn main() -> Result<()> {
                     .wrap_err("could not clean the manifest directory")?;
             }
 
-            let path = if let Some(package) = cli.package {
-                package
-            } else {
-                Path::new("./").to_path_buf()
-            };
-            let path = path.canonicalize().into_diagnostic().wrap_err(format!(
-                "Can not canonicalize path to package {}",
-                path.display()
-            ))?;
+            let package_bundle = if let Some(gate_path) = gate {
+                let gate_data = gate::Gate::new(&gate_path)?;
 
-            let package_bundle = Bundle::new(path)?;
+                let path = if let Some(package) = &package {
+                    let name = if package.contains("/") {
+                        package.split_once('/').unwrap().1
+                    } else {
+                        package.as_str()
+                    };
+                    gate_path
+                        .parent()
+                        .unwrap_or(Path::new("./"))
+                        .join("packages")
+                        .join(name)
+                } else {
+                    Path::new("./").to_path_buf()
+                };
+
+                let path = path.canonicalize().into_diagnostic().wrap_err(format!(
+                    "Can not canonicalize path to package {}",
+                    path.display()
+                ))?;
+
+                let mut package_bundle = Bundle::open_local(path)?;
+
+                if let Some(package) = &package {
+                    if let Some(gate_package) = gate_data.get_package(package.as_str()) {
+                        package_bundle
+                            .package_document
+                            .merge_into_mut(&gate_package);
+                    }
+                }
+
+                package_bundle
+            } else {
+                let path = if let Some(package) = package {
+                    let name = if package.contains("/") {
+                        package.split_once('/').unwrap().1
+                    } else {
+                        package.as_str()
+                    };
+                    Path::new("./packages").join(name)
+                } else {
+                    Path::new("./").to_path_buf()
+                };
+
+                let path = path.canonicalize().into_diagnostic().wrap_err(format!(
+                    "Can not canonicalize path to package {}",
+                    path.display()
+                ))?;
+
+                Bundle::open_local(path)?
+            };
 
             let sources: Vec<SourceSection> = package_bundle.package_document.sources.clone();
 
-            download::download_and_verify(&wks, sources.as_slice())
+            download::download_and_verify(&wks, sources.as_slice(), archive_clean)
                 .wrap_err("download and verify failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
@@ -293,27 +351,11 @@ fn main() -> Result<()> {
                 }
             }
 
-            configure::configure_package_sources(&wks, &package_bundle, cross_prefix, cross_triple)
+            build::build_package_sources(&wks, &package_bundle)
                 .wrap_err("configure step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
-                if stop_on_step == &BuildSteps::Configure {
-                    return Ok(());
-                }
-            }
-
-            compile::run_compile(&wks, &package_bundle).wrap_err("compilation step failed")?;
-
-            if let Some(stop_on_step) = &stop_on_step {
                 if stop_on_step == &BuildSteps::Build {
-                    return Ok(());
-                }
-            }
-
-            install::run_install(&wks, &package_bundle).wrap_err("installation step failed")?;
-
-            if let Some(stop_on_step) = &stop_on_step {
-                if stop_on_step == &BuildSteps::Install {
                     return Ok(());
                 }
             }
@@ -328,7 +370,7 @@ fn main() -> Result<()> {
             ips::run_lint(&wks, &package_bundle).wrap_err("lint failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
-                if stop_on_step == &BuildSteps::Mogrify {
+                if stop_on_step == &BuildSteps::GenerateManifests {
                     return Ok(());
                 }
             }

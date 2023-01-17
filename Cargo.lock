@@ -461,6 +461,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gate"
+version = "0.1.0"
+dependencies = [
+ "bundle",
+ "kdl",
+ "knuffel",
+ "miette 4.7.1",
+ "thiserror",
+ "url",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -854,6 +866,7 @@ dependencies = [
  "curl",
  "directories",
  "fs_extra",
+ "gate",
  "kdl",
  "log",
  "microtemplate",

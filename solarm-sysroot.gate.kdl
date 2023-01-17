@@ -1,0 +1,26 @@
+name "solarm-sysroot"
+version "0.5.11"
+branch "2023.0.0"
+
+distribution type="tarball"
+
+package {
+	name "developer/gnu-binutils"
+	version "2.39"
+	build {
+		option "with-sysroot"
+		option "target=aarch64-solaris2.11"
+		option "enable-initfini-array"
+	}	
+}
+
+package {
+	name "developer/cross-base-arm"
+}
+
+package {
+	name "developer/gcc"
+	version "10.3.0"	
+}
+
+

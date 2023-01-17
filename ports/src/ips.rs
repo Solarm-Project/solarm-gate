@@ -26,7 +26,7 @@ const DEFAULT_IPS_TEMPLATE: &str = r#"
 # Copyright 2023 OpenFlowLabs
 #
 
-set name=pkg.fmri value=pkg:/{name}@{version},0.5.11-2023.0.1.0
+set name=pkg.fmri value=pkg:/{name}@{version},{build_version}-{branch_version}.{revision}
 set name=pkg.summary value="{summary}"
 set name=info.classification value="org.opensolaris.category.2008:{classification}"
 set name=info.upstream-url value="{project_url}"
@@ -44,6 +44,9 @@ license {license_file_name} license='{license_name}'
 struct StringInterpolationVars<'a> {
     pub name: &'a str,
     pub version: &'a str,
+    pub build_version: &'a str,
+    pub branch_version: &'a str,
+    pub revision: &'a str,
     pub summary: &'a str,
     pub classification: &'a str,
     pub project_url: &'a str,
@@ -93,7 +96,10 @@ pub fn run_mogrify(wks: &Workspace, pkg: &Bundle) -> Result<()> {
             .package_document
             .version
             .clone()
-            .ok_or(miette::miette!("no version specified"))?,
+            .unwrap_or(String::from("0.5.11")), //TODO take this default version from the gate
+        build_version: "0.5.11",    //TODO take from gate data
+        branch_version: "2023.0.0", //TODO take from gate data
+        revision: "1",              //TODO take from automation
         summary: &pkg
             .package_document
             .summary

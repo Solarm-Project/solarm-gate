@@ -45,6 +45,22 @@ pub fn unpack_sources<P: AsRef<Path>>(
                 bundle::SourceNode::File(file) => {
                     let src_path = file.get_bundle_path(bundle_path);
                     let final_path = unpack_path.join(file.get_target_path());
+
+                    if let Some(final_dir) = final_path.parent() {
+                        if !final_dir.exists() {
+                            DirBuilder::new()
+                                .recursive(true)
+                                .create(&final_dir)
+                                .into_diagnostic()?;
+                        }
+                    }
+
+                    println!(
+                        "Copying file {} to {}",
+                        src_path.to_string_lossy().to_string(),
+                        final_path.to_string_lossy().to_string()
+                    );
+
                     std::fs::copy(src_path, final_path).into_diagnostic()?;
                 }
                 bundle::SourceNode::Patch(patch) => {

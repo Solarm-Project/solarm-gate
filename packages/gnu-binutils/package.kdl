@@ -1,7 +1,6 @@
 name "developer/gnu-binutils"
 summary "GNU collection of binary tools like ld, as"
 classification "Development/GNU"
-version "2.39"
 license-file "COPYING"
 license "GPLv3, FDLv1.3"
 project-url "https://www.gnu.org/software/binutils/"
@@ -12,11 +11,6 @@ source {
 }
 
 build "configure" {
-	cross-tool "arm" {
-		option "with-sysroot"
-		option "target=aarch64-solaris2.11"
-		option "enable-initfini-array"
-	}
 	flag "-I/usr/include/gmp"
 }
 
