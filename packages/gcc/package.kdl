@@ -1,10 +1,17 @@
 name "developer/gcc"
+summary "GNU compiler collection"
+classification "Development/GNU"
+license-file "COPYING"
+license "GPLv3, FDLv1.3"
+project-url "https://www.gnu.org/software/gcc/"
+
+seperate-build-dir
 
 source {
 	git "https://github.com/richlowe/gcc" branch="il-10_3_0-arm64"
 }
 
-build "configure" {
+configure {
 	option "with-gmp-include=/usr/include/gmp"
 	option "with-abi=lp64"
 	option "enable-languages=c,c++"
@@ -25,3 +32,5 @@ build "configure" {
 	option "with-gnu-as"
 	option "without-gnu-ld"
 }
+
+dependency "library/spandsp"

@@ -151,7 +151,13 @@ fn build_using_automake(
         &pkg.package_document.sources[0],
     );
     let unpack_path = build_dir.join(&unpack_name);
-    std::env::set_current_dir(&unpack_path).into_diagnostic()?;
+    if pkg.package_document.seperate_build_dir {
+        let out_dir = build_dir.join("out");
+        DirBuilder::new().create(&out_dir).into_diagnostic()?;
+        std::env::set_current_dir(&out_dir).into_diagnostic()?;
+    } else {
+        std::env::set_current_dir(&unpack_path).into_diagnostic()?;
+    }
 
     let mut option_vec: Vec<_> = vec![];
     let mut env_flags: HashMap<String, String> = HashMap::new();
@@ -191,7 +197,13 @@ fn build_using_automake(
     env_flags.insert(String::from("DESTDIR"), proto_dir_str.clone());
     let destdir_arg = format!("DESTDIR={}", &proto_dir_str);
 
-    let mut configure_cmd = Command::new("./configure");
+    let bin_path = if pkg.package_document.seperate_build_dir {
+        unpack_path.join("configure").to_string_lossy().to_string()
+    } else {
+        String::from("./configure")
+    };
+
+    let mut configure_cmd = Command::new(&bin_path);
     configure_cmd.env_clear();
     configure_cmd.envs(&env_flags);
     configure_cmd.args(&option_vec);
@@ -201,7 +213,7 @@ fn build_using_automake(
     configure_cmd.stdout(Stdio::inherit());
 
     println!(
-        "Running ./configure with options {}; {}; env=[{}]",
+        "Running configure with options {}; {}; env=[{}]",
         option_vec.join(" "),
         destdir_arg,
         env_flags

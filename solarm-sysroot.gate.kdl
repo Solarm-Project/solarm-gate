@@ -15,7 +15,7 @@ transform include="archive-libraries-drop"
 transform include="ignore-gcc-usr-lib"
 
 package {
-	name "developer/arm-gnu-binutils"
+	name "developer/solarm/cross/arm/gnu-binutils"
 	version "2.39"
 	prefix "/opt/solarm"
 	configure {
@@ -26,23 +26,22 @@ package {
 }
 
 package {
-	name "developer/arm-sysroot"
-	prefix "/opt/solarm"
+	name "developer/solarm/cross/arm/sysroot"
 }
 
 package {
-	name "developer/gcc"
+	name "developer/solarm/cross/arm/gcc"
 	version "10.3.0"
 	prefix "/opt/solarm"
 	configure {
 		option "target=aarch64-solaris2.11"
-		option "with-build-sysroot=/opt/solarm"
-		option "with-headers=/opt/solarm/usr/include"
-		option "with-as=/opt/solarm/usr/gnu/bin/aarch64-solaris2.11-as"
-		option "with-ld=/opt/solarm/opt/onbld/bin/amd64/ld"
+		option "with-build-sysroot=/opt/solarm/sysroot"
+		option "with-headers=/opt/solarm/sysroot/usr/include"
+		option "with-as=/opt/solarm/bin/aarch64-solaris2.11-as"
+		option "with-ld=/opt/solarm/bin/amd64/ld"
 	}
-	dependency "developer/cross-base-arm"
-	dependency "developer/gnu-binutils"
+	dependency "developer/solarm/cross/arm/gnu-binutils"
+	dependency "developer/solarm/cross/arm/sysroot"
 }
 
 

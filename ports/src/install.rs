@@ -30,17 +30,28 @@ pub fn run_install(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         &pkg.package_document.sources[0],
     );
     let unpack_path = build_dir.join(&unpack_name);
-    std::env::set_current_dir(&unpack_path).into_diagnostic()?;
+    if pkg.package_document.seperate_build_dir {
+        let out_dir = build_dir.join("out");
+        std::env::set_current_dir(&out_dir).into_diagnostic()?;
+    } else {
+        std::env::set_current_dir(&unpack_path).into_diagnostic()?;
+    }
 
-    let mut env_flags: HashMap<String, String> = HashMap::new();
-    let build_tool = if unpack_path.join("Makefile").exists() {
+    let build_tool_check_dir = if pkg.package_document.seperate_build_dir {
+        build_dir.join("out")
+    } else {
+        unpack_path.clone()
+    };
+
+    let build_tool = if build_tool_check_dir.join("Makefile").exists() {
         BuildTool::Make
-    } else if unpack_path.join("build.ninja").exists() {
+    } else if build_tool_check_dir.join("build.ninja").exists() {
         BuildTool::Ninja
     } else {
         return Err(miette::miette!("no supported build tool could be detected make sure a Makefile or build.ninja file exists in the build directory"));
     };
 
+    let mut env_flags: HashMap<String, String> = HashMap::new();
     for (env_key, env_val) in dotenv_env {
         env_flags.insert(env_key, env_val);
     }

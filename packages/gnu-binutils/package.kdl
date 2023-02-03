@@ -1,10 +1,12 @@
-name "developer/arm-gnu-binutils"
+name "developeri/gnu-binutils"
 summary "GNU collection of binary tools like ld, as"
 classification "Development/GNU"
 license-file "COPYING"
 license "GPLv3, FDLv1.3"
 project-url "https://www.gnu.org/software/binutils/"
 prefix "/usr/gnu"
+
+seperate-build-dir
 
 source {
 	git "https://github.com/richlowe/binutils-gdb" branch="illumos-arm64"

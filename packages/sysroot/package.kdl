@@ -7,12 +7,13 @@
 //	touch $@
 //
 
-name "developer/arm-sysroot"
+name "developer/cross/arm/sysroot"
 summary "Cross Linker and Headers inside sysroot for ARM cross compilation from x86"
 classification "Development/System"
 project-url "https://illumos.org"
 license-file "README.md"
 license "CDDL 1.0"
+prefix "/opt/solarm"
 
 source {
 	git "https://github.com/richlowe/illumos-gate" branch="arm64-gate" must-stay-as-repo=true
@@ -20,6 +21,6 @@ source {
 }
 
 build {
-	script "illumos_gate_cross_ld.bash" prototype-dir="usr/src/tools/proto/root_i386-nd"
-	package-directory src="proto/root_aarch64/usr/include" target="usr/include" name="sysroot"
+	script "illumos_gate_cross_ld.bash" prototype-dir="usr/src/tools/proto/root_i386-nd/opt/onbld"
+	package-directory src="proto/root_aarch64/usr/include" target="sysroot/usr/include" name="sysroot"
 }

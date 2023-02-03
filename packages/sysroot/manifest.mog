@@ -1,0 +1,1 @@
+<transform file path=opt/solarm/bin.* -> add pkg.depend.bypass-generate .* >

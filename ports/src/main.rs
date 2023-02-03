@@ -64,7 +64,6 @@ enum Command {
         #[arg(long, short)]
         gate: Option<PathBuf>,
 
-        #[arg(long, short)]
         package: Option<String>,
 
         #[arg(long, default_value = "false")]
@@ -301,7 +300,7 @@ fn main() -> Result<()> {
 
                 let path = if let Some(package) = &package {
                     let name = if package.contains("/") {
-                        package.split_once('/').unwrap().1
+                        package.rsplit_once('/').unwrap().1
                     } else {
                         package.as_str()
                     };

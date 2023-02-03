@@ -135,6 +135,7 @@ impl PackageBuilder {
             sources: vec![],
             build: vec![],
             dependencies: vec![],
+            seperate_build_dir: false,
         })
     }
 
@@ -173,6 +174,8 @@ pub struct Package {
     pub revision: Option<String>,
     #[knuffel(child, unwrap(argument))]
     pub project_url: Option<String>,
+    #[knuffel(child)]
+    pub seperate_build_dir: bool,
     #[knuffel(children(name = "source"))]
     pub sources: Vec<SourceSection>,
     #[knuffel(children(name = "dependency"))]
@@ -277,6 +280,8 @@ impl Package {
     }
 
     pub fn merge_into_mut(&mut self, other: &Package) -> BundleResult<()> {
+        self.name = other.name.clone();
+
         if let Some(classification) = &other.classification {
             self.classification = Some(classification.clone());
         }
