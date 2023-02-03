@@ -4,6 +4,7 @@ mod compile;
 mod config;
 mod download;
 mod env;
+mod forge;
 mod install;
 mod ips;
 mod tarball;
@@ -67,10 +68,17 @@ enum Command {
         package: Option<String>,
 
         #[arg(long, default_value = "false")]
-        clean: bool,
+        no_clean: bool,
 
         #[arg(long, default_value = "false")]
         archive_clean: bool,
+
+        #[arg(short = 'I', long = "include")]
+        transform_include_dir: Option<PathBuf>,
+    },
+    Forge {
+        #[command(subcommand)]
+        cmd: forge::ForgeCLI,
     },
 }
 
@@ -96,7 +104,7 @@ pub(crate) enum BuildSteps {
     Download,
     Unpack,
     Build,
-    GenerateManifests,
+    Pack,
     Publish,
 }
 
@@ -249,10 +257,11 @@ fn main() -> Result<()> {
         }
         Command::Build {
             stop_on_step,
-            clean,
+            no_clean,
             archive_clean,
             gate,
             package,
+            transform_include_dir,
         } => {
             let wks = if let Some(wks_path) = cli.workspace {
                 conf.get_workspace_from(&wks_path)?
@@ -260,7 +269,19 @@ fn main() -> Result<()> {
                 conf.get_current_wks()?
             };
 
-            if clean {
+            let transform_include_dir = transform_include_dir.map(|p| match p.canonicalize() {
+                Ok(p) => p,
+                Err(e) => {
+                    println!(
+                        "could not cannonicalize {} due to {} continuing ignoring and continuing",
+                        p.display(),
+                        e
+                    );
+                    p
+                }
+            });
+
+            if !no_clean {
                 std::fs::remove_dir_all(wks.get_or_create_download_dir()?)
                     .into_diagnostic()
                     .wrap_err("could not clean the download directory")?;
@@ -276,7 +297,7 @@ fn main() -> Result<()> {
             }
 
             let (package_bundle, gate_data) = if let Some(gate_path) = gate {
-                let gate_data = gate::Gate::new(&gate_path)?;
+                let gate_data = gate::Gate::new(&gate_path).wrap_err("could not open gate data")?;
 
                 let path = if let Some(package) = &package {
                     let name = if package.contains("/") {
@@ -298,13 +319,14 @@ fn main() -> Result<()> {
                     path.display()
                 ))?;
 
-                let mut package_bundle = Bundle::open_local(path)?;
+                let mut package_bundle =
+                    Bundle::open_local(path).wrap_err("could not open package.kdl of package")?;
 
                 if let Some(package) = &package {
                     if let Some(gate_package) = gate_data.get_package(package.as_str()) {
                         package_bundle
                             .package_document
-                            .merge_into_mut(&gate_package);
+                            .merge_into_mut(&gate_package)?;
                     }
                 }
 
@@ -326,7 +348,10 @@ fn main() -> Result<()> {
                     path.display()
                 ))?;
 
-                (Bundle::open_local(path)?, None)
+                (
+                    Bundle::open_local(path).wrap_err("could not open package.kdl of package")?,
+                    None,
+                )
             };
 
             let sources: Vec<SourceSection> = package_bundle.package_document.sources.clone();
@@ -370,34 +395,59 @@ fn main() -> Result<()> {
                             tarball::make_release_tarball(&wks, &package_bundle)?;
                         }
                         gate::DistributionType::IPS => {
-                            run_ips_actions(&wks, &package_bundle, Some(gate_data))?;
+                            run_ips_actions(
+                                &wks,
+                                &package_bundle,
+                                Some(gate_data),
+                                transform_include_dir,
+                            )?;
                         }
                     }
                 } else {
-                    run_ips_actions(&wks, &package_bundle, Some(gate_data))?;
+                    run_ips_actions(
+                        &wks,
+                        &package_bundle,
+                        Some(gate_data),
+                        transform_include_dir,
+                    )?;
                 }
             } else {
-                run_ips_actions(&wks, &package_bundle, gate_data.clone())?;
+                run_ips_actions(
+                    &wks,
+                    &package_bundle,
+                    gate_data.clone(),
+                    transform_include_dir,
+                )?;
             }
 
             if let Some(stop_on_step) = &stop_on_step {
-                if stop_on_step == &BuildSteps::GenerateManifests {
+                if stop_on_step == &BuildSteps::Pack {
                     return Ok(());
                 }
             }
 
             Ok(())
         }
+        Command::Forge { cmd } => forge::handle_forge(&cmd),
     }
 }
 
-fn run_ips_actions(wks: &Workspace, pkg: &Bundle, gate_data: Option<Gate>) -> miette::Result<()> {
+fn run_ips_actions(
+    wks: &Workspace,
+    pkg: &Bundle,
+    gate_data: Option<Gate>,
+    transform_include_dir: Option<PathBuf>,
+) -> miette::Result<()> {
     ips::run_generate_filelist(wks, pkg).wrap_err("generating filelist failed")?;
-    ips::run_mogrify(wks, pkg, gate_data).wrap_err("mogrify failed")?;
+    ips::run_mogrify(wks, pkg, gate_data.clone(), transform_include_dir)
+        .wrap_err("mogrify failed")?;
     ips::run_generate_pkgdepend(wks, pkg).wrap_err("failed to generate dependency entries")?;
     ips::run_resolve_dependencies(wks, pkg).wrap_err("failed to resolve dependencies")?;
     ips::run_lint(wks, pkg).wrap_err("lint failed")?;
 
-    //TODO: publish
+    let publisher = &gate_data.unwrap_or(Gate::default()).publisher;
+    ips::ensure_repo_with_publisher_exists(&publisher)
+        .wrap_err("failed to ensure repository exists")?;
+    ips::publish_package(wks, pkg, &publisher).wrap_err("package publish failed")?;
     Ok(())
 }

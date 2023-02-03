@@ -1,13 +1,11 @@
-use kdl::KdlDocument;
-use miette::{Diagnostic, IntoDiagnostic};
+use miette::{Diagnostic, IntoDiagnostic, WrapErr};
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{read_to_string, File},
     io::Write,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 use thiserror::Error;
-use url::Url;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum BundleError {
@@ -23,6 +21,8 @@ pub enum BundleError {
     UrlParseError(#[from] url::ParseError),
     #[error("unknown build type {0}")]
     UnknownBuildType(String),
+    #[error("build types {0} and {1} are not mergable")]
+    NonMergableBuildSections(String, String),
 }
 
 type BundleResult<T> = std::result::Result<T, BundleError>;
@@ -31,7 +31,6 @@ type BundleResult<T> = std::result::Result<T, BundleError>;
 pub struct Bundle {
     path: PathBuf,
     pub package_document: Package,
-    kdl_doc: Option<KdlDocument>,
 }
 
 impl Bundle {
@@ -61,100 +60,43 @@ impl Bundle {
                     .ok_or(BundleError::NoPackageDocumentParentDir)?
                     .to_path_buf(),
                 package_document,
-                kdl_doc: None,
             })
         } else {
             let package_document = knuffel::parse::<Package>(&name, &package_document_string)?;
             Ok(Self {
                 path,
                 package_document,
-                kdl_doc: None,
             })
         }
     }
 
-    fn open_document(&mut self) -> BundleResult<()> {
-        let data_string = read_to_string(&self.path.join("package.kdl"))?;
-        self.kdl_doc = Some(data_string.parse()?);
+    fn open_document(&mut self) -> miette::Result<()> {
+        let data_string = read_to_string(&self.path.join("package.kdl"))
+            .into_diagnostic()
+            .wrap_err("could not open package document")?;
+        self.package_document = knuffel::parse::<Package>("package.kdl", &data_string)?;
         Ok(())
     }
 
-    fn save_document(&mut self) -> BundleResult<()> {
-        let doc_str = self.kdl_doc.as_ref().unwrap().to_string();
+    fn save_document(&self) -> BundleResult<()> {
+        let doc_str = self.package_document.to_document().to_string();
         let mut f = File::create(&self.path.join("package.kdl"))?;
         f.write_all(doc_str.as_bytes())?;
         Ok(())
     }
 
-    pub fn add_source(&mut self, node: SourceNode) -> BundleResult<()> {
-        let kdl_doc = if let Some(kdl_doc) = &mut self.kdl_doc {
-            kdl_doc
+    pub fn add_source(&mut self, node: SourceNode) -> miette::Result<()> {
+        if let Some(src_section) = self.package_document.sources.first_mut() {
+            src_section.sources.push(node);
         } else {
-            self.open_document()?;
-            self.kdl_doc.as_mut().unwrap()
+            let src_section = SourceSection {
+                name: None,
+                sources: vec![node],
+            };
+            self.package_document.sources.push(src_section);
         };
-
-        if kdl_doc.get("source").is_none() {
-            kdl_doc.nodes_mut().push(kdl::KdlNode::new("source"))
-        }
-
-        let src_node: &mut kdl::KdlNode = kdl_doc.get_mut("source").unwrap();
-        let src_nodes = src_node.ensure_children();
-
-        match node {
-            SourceNode::Archive(src) => {
-                let archive_source: Url = src.src.parse()?;
-                let mut n = kdl::KdlNode::new("archive");
-                n.push(kdl::KdlEntry::new(archive_source.to_string()));
-                n.push(kdl::KdlEntry::new_prop("sha512", src.sha512));
-                src_nodes.nodes_mut().push(n);
-                self.save_document()?;
-            }
-            SourceNode::Git(git_src) => {
-                let mut n = kdl::KdlNode::new("git");
-                n.push(kdl::KdlEntry::new(git_src.repository));
-                if let Some(branch) = git_src.branch {
-                    n.push(kdl::KdlEntry::new_prop("branch", branch));
-                }
-                if let Some(tag) = git_src.tag {
-                    n.push(kdl::KdlEntry::new_prop("tag", tag))
-                }
-                src_nodes.nodes_mut().push(n);
-                self.save_document()?;
-            }
-            SourceNode::File(file_src) => {
-                let mut n = kdl::KdlNode::new("file");
-                n.push(kdl::KdlEntry::new(
-                    file_src.bundle_path.to_string_lossy().to_string(),
-                ));
-                if let Some(target_path) = file_src.target_path {
-                    n.push(kdl::KdlEntry::new(
-                        target_path.to_string_lossy().to_string(),
-                    ));
-                }
-                src_nodes.nodes_mut().push(n);
-                self.save_document()?;
-            }
-            SourceNode::Patch(patch_src) => {
-                let mut n = kdl::KdlNode::new("patch");
-                n.push(kdl::KdlEntry::new(
-                    patch_src.bundle_path.to_string_lossy().to_string(),
-                ));
-                if let Some(dir_to_drop) = patch_src.drop_directories {
-                    n.push(kdl::KdlEntry::new_prop("drop-directories", dir_to_drop));
-                }
-                src_nodes.nodes_mut().push(n);
-                self.save_document()?;
-            }
-            SourceNode::Overlay(overlay_src) => {
-                let mut n = kdl::KdlNode::new("overlay");
-                n.push(kdl::KdlEntry::new(
-                    overlay_src.bundle_path.to_string_lossy().to_string(),
-                ));
-                src_nodes.nodes_mut().push(n);
-                self.save_document()?;
-            }
-        }
+        self.save_document()?;
+        self.open_document()?;
         Ok(())
     }
 
@@ -165,9 +107,53 @@ impl Bundle {
     pub fn get_name(&self) -> String {
         self.package_document.name.clone()
     }
+
+    pub fn get_mogrify_manifest(&self) -> Option<PathBuf> {
+        let file_path = self.path.join("manifest.mog");
+        if file_path.exists() {
+            Some(file_path)
+        } else {
+            None
+        }
+    }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+pub struct PackageBuilder(Package);
+
+impl PackageBuilder {
+    pub fn new() -> Self {
+        PackageBuilder(Package {
+            name: String::new(),
+            classification: None,
+            summary: None,
+            license_file: None,
+            license: None,
+            prefix: None,
+            version: None,
+            revision: None,
+            project_url: None,
+            sources: vec![],
+            build: vec![],
+            dependencies: vec![],
+        })
+    }
+
+    pub fn name(mut self, name: String) -> Self {
+        self.0.name = name;
+        self
+    }
+
+    pub fn classification(mut self, classification: String) -> Self {
+        self.0.classification = Some(classification);
+        self
+    }
+
+    pub fn finish(self) -> Package {
+        self.0
+    }
+}
+
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
@@ -189,12 +175,10 @@ pub struct Package {
     pub project_url: Option<String>,
     #[knuffel(children(name = "source"))]
     pub sources: Vec<SourceSection>,
-    #[knuffel(child)]
-    build: Option<BuildSection>,
     #[knuffel(children(name = "dependency"))]
     pub dependencies: Vec<Dependency>,
-    #[knuffel(children(name = "transform"))]
-    pub transforms: Vec<Transform>,
+    #[knuffel(children)]
+    build: Vec<BuildSection>,
 }
 
 impl Package {
@@ -207,11 +191,14 @@ impl Package {
     }
 
     pub fn get_build_section(&self) -> Option<BuildSection> {
-        self.build.clone()
+        self.build.first().map(|b| b.clone())
     }
 
     pub fn ensure_build_section(&self) -> BuildSection {
-        self.build.clone().unwrap()
+        self.build
+            .first()
+            .map(|b| b.clone())
+            .unwrap_or(BuildSection::default())
     }
 
     pub fn to_node(&self) -> kdl::KdlNode {
@@ -276,7 +263,7 @@ impl Package {
             }
         }
 
-        if let Some(build) = &self.build {
+        if let Some(build) = &self.get_build_section() {
             let build_node = build.to_node();
             doc.nodes_mut().push(build_node);
         }
@@ -286,15 +273,10 @@ impl Package {
             doc.nodes_mut().push(dep_node);
         }
 
-        for tr in &self.transforms {
-            let tr_node = tr.to_node();
-            doc.nodes_mut().push(tr_node);
-        }
-
         node
     }
 
-    pub fn merge_into_mut(&mut self, other: &Package) {
+    pub fn merge_into_mut(&mut self, other: &Package) -> BundleResult<()> {
         if let Some(classification) = &other.classification {
             self.classification = Some(classification.clone());
         }
@@ -327,23 +309,54 @@ impl Package {
             self.project_url = Some(project_url.clone());
         }
 
-        if let Some(build_section) = &other.build {
-            let mut self_build = self.ensure_build_section();
-            for opt in &build_section.options {
-                self_build.options.push(opt.clone());
-            }
-            for flag in &build_section.flags {
-                self_build.flags.push(flag.clone());
-            }
-            for script in &build_section.scripts {
-                self_build.scripts.push(script.clone());
-            }
+        if let Some(build_section) = &other.get_build_section() {
+            let self_build = self.ensure_build_section();
+            let final_build = match build_section {
+                BuildSection::Configure(other_configure) => match self_build {
+                    BuildSection::Configure(c) => {
+                        Ok(BuildSection::Configure(ConfigureBuildSection {
+                            options: c
+                                .options
+                                .into_iter()
+                                .chain(other_configure.options.clone())
+                                .collect(),
+                            flags: c
+                                .flags
+                                .into_iter()
+                                .chain(other_configure.flags.clone())
+                                .collect(),
+                        }))
+                    }
+                    x => Err(BundleError::NonMergableBuildSections(
+                        x.to_string(),
+                        build_section.clone().to_string(),
+                    )),
+                },
+                BuildSection::CMake => todo!(),
+                BuildSection::Meson => todo!(),
+                BuildSection::Build(other_scripts) => match self_build {
+                    BuildSection::Build(s) => Ok(BuildSection::Build(ScriptBuildSection {
+                        scripts: s
+                            .scripts
+                            .into_iter()
+                            .chain(other_scripts.scripts.clone())
+                            .collect(),
+                        package_directories: s
+                            .package_directories
+                            .into_iter()
+                            .chain(other_scripts.package_directories.clone())
+                            .collect(),
+                    })),
 
-            if let Some(sysroot) = &build_section.package_sysroot {
-                self_build.package_sysroot = Some(sysroot.clone());
-            }
+                    x => Err(BundleError::NonMergableBuildSections(
+                        x.to_string(),
+                        build_section.to_string(),
+                    )),
+                },
+                BuildSection::NoBuild => Ok(BuildSection::NoBuild),
+            }?;
 
-            self.build = Some(self_build.clone());
+            self.build = vec![final_build];
         }
 
         for src in &other.sources {
@@ -354,27 +367,11 @@ impl Package {
             self.dependencies.push(dep.clone());
         }
 
-        for transform in &other.transforms {
-            self.transforms.push(transform.clone());
-        }
+        Ok(())
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
-pub struct Transform {
-    #[knuffel(argument)]
-    pub rule: String,
-}
-
-impl Transform {
-    pub fn to_node(&self) -> kdl::KdlNode {
-        let mut node = kdl::KdlNode::new("transform");
-        node.insert(0, self.rule.as_str());
-        node
-    }
-}
-
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct Dependency {
     #[knuffel(argument)]
     pub name: String,
@@ -388,7 +385,7 @@ impl Dependency {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct SourceSection {
     #[knuffel(argument)]
     pub name: Option<String>,
@@ -419,7 +416,7 @@ impl SourceSection {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub enum SourceNode {
     Archive(ArchiveSource),
     Git(GitSource),
@@ -428,7 +425,7 @@ pub enum SourceNode {
     Overlay(OverlaySource),
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct ArchiveSource {
     #[knuffel(argument)]
     pub src: String,
@@ -446,7 +443,7 @@ impl ArchiveSource {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct GitSource {
     #[knuffel(argument)]
     pub repository: String,
@@ -501,7 +498,7 @@ impl GitSource {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct FileSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -539,7 +536,7 @@ impl FileSource {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct PatchSource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -572,7 +569,7 @@ impl PatchSource {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct OverlaySource {
     #[knuffel(argument)]
     bundle_path: PathBuf,
@@ -596,41 +593,66 @@ impl OverlaySource {
     }
 }
 
-#[derive(Debug, Default, knuffel::Decode, Clone)]
-pub struct BuildSection {
-    #[knuffel(argument, default, str)]
-    pub build_type: BuildType,
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
+pub enum BuildSection {
+    Configure(ConfigureBuildSection),
+    CMake,
+    Meson,
+    Build(ScriptBuildSection),
+    #[default]
+    NoBuild,
+}
+
+impl ToString for BuildSection {
+    fn to_string(&self) -> String {
+        match &self {
+            BuildSection::Configure(_) => "configure",
+            BuildSection::CMake => "cmake",
+            BuildSection::Meson => "meson",
+            BuildSection::Build(_) => "build",
+            BuildSection::NoBuild => "no-build",
+        }
+        .to_string()
+    }
+}
+
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
+pub struct ConfigureBuildSection {
     #[knuffel(children(name = "option"))]
     pub options: Vec<BuildOptionNode>,
     #[knuffel(children(name = "flag"))]
     pub flags: Vec<BuildFlagNode>,
-    #[knuffel(children(name = "script"))]
-    pub scripts: Vec<ScriptNode>,
-    #[knuffel(child)]
-    pub package_sysroot: Option<SysRootNode>,
 }
 
-#[derive(Debug, Default, knuffel::Decode, Clone)]
-pub struct SysRootNode {
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
+pub struct ScriptBuildSection {
+    #[knuffel(children(name = "script"))]
+    pub scripts: Vec<ScriptNode>,
+    #[knuffel(children(name = "package-directory"))]
+    pub package_directories: Vec<PackageDirectoryNode>,
+}
+
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
+pub struct PackageDirectoryNode {
     #[knuffel(property)]
-    pub from: String,
+    pub src: String,
     #[knuffel(property)]
     pub target: String,
     #[knuffel(property)]
     pub name: String,
 }
 
-impl SysRootNode {
+impl PackageDirectoryNode {
     pub fn to_node(&self) -> kdl::KdlNode {
-        let mut node = kdl::KdlNode::new("package-sysroot");
-        node.insert("from", self.from.as_str());
+        let mut node = kdl::KdlNode::new("package-directory");
+        node.insert("src", self.src.as_str());
         node.insert("target", self.target.as_str());
         node.insert("name", self.name.as_str());
         node
     }
 }
 
-#[derive(Debug, Default, knuffel::Decode, Clone)]
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct ScriptNode {
     #[knuffel(argument)]
     pub name: String,
@@ -650,46 +672,7 @@ impl ScriptNode {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
-pub enum BuildType {
-    Configure,
-    CMake,
-    Meson,
-    Custom,
-}
-
-impl Default for BuildType {
-    fn default() -> Self {
-        Self::Configure
-    }
-}
-
-impl FromStr for BuildType {
-    type Err = BundleError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "configure" => Ok(BuildType::Configure),
-            "meson" => Ok(BuildType::Meson),
-            "cmake" => Ok(BuildType::CMake),
-            "custom" => Ok(BuildType::Custom),
-            x => Err(BundleError::UnknownBuildType(x.to_string())),
-        }
-    }
-}
-
-impl ToString for BuildType {
-    fn to_string(&self) -> String {
-        match self {
-            BuildType::Configure => String::from("configure"),
-            BuildType::CMake => String::from("cmake"),
-            BuildType::Meson => String::from("meson"),
-            BuildType::Custom => String::from("custom"),
-        }
-    }
-}
-
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct BuildFlagNode {
     #[knuffel(argument)]
     pub flag: String,
@@ -703,7 +686,7 @@ impl BuildFlagNode {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct BuildOptionNode {
     #[knuffel(argument)]
     pub option: String,
@@ -719,31 +702,41 @@ impl BuildOptionNode {
 
 impl BuildSection {
     pub fn to_node(&self) -> kdl::KdlNode {
-        let mut node = kdl::KdlNode::new("build");
-        node.insert(0, self.build_type.to_string().as_str());
-        let doc = node.ensure_children();
+        match &self {
+            BuildSection::Configure(c) => {
+                let mut node = kdl::KdlNode::new("configure");
+                let doc = node.ensure_children();
+                for option in &c.options {
+                    doc.nodes_mut().push(option.to_node());
+                }
 
-        for option in &self.options {
-            doc.nodes_mut().push(option.to_node());
+                for flag in &c.flags {
+                    doc.nodes_mut().push(flag.to_node());
+                }
+
+                node
+            }
+            BuildSection::CMake => todo!(),
+            BuildSection::Meson => todo!(),
+            BuildSection::Build(s) => {
+                let mut node = kdl::KdlNode::new("build");
+                let doc = node.ensure_children();
+                for script in &s.scripts {
+                    doc.nodes_mut().push(script.to_node());
+                }
+
+                for package_directory in &s.package_directories {
+                    doc.nodes_mut().push(package_directory.to_node());
+                }
+
+                node
+            }
+            BuildSection::NoBuild => kdl::KdlNode::new("no-build"),
         }
-
-        for flag in &self.flags {
-            doc.nodes_mut().push(flag.to_node());
-        }
-
-        for script in &self.scripts {
-            doc.nodes_mut().push(script.to_node());
-        }
-
-        if let Some(sysroot) = &self.package_sysroot {
-            doc.nodes_mut().push(sysroot.to_node());
-        }
-
-        node
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct FileNode {
     #[knuffel(child, unwrap(argument))]
     pub include: String,

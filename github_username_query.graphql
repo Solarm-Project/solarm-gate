@@ -1,0 +1,5 @@
+query GitHubUsernameQuery { 
+  viewer { 
+    login
+  }
+}

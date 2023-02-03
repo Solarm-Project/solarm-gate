@@ -15,12 +15,23 @@ const NO_PROJECT_DIR_ERR_STR: &str =
     "no project directory could be derived. Is this cli running on a supported OS?";
 const DEFAULT_WORKSPACE_DIR: &str = "wks";
 const DEFAULT_OUTPUT_DIR_DIR: &str = "output";
+const DEFAULT_REPO_DIR_DIR: &str = "repo";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     current: Option<String>,
     base_path: Option<String>,
     output_dir: Option<String>,
+    pub github_token: Option<GitHubToken>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GitHubToken {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub token_type: String,
+    pub scope: Option<Vec<String>>,
+    pub expires_in: Option<u64>,
 }
 
 impl Config {
@@ -34,6 +45,7 @@ impl Config {
                         current: Some(DEFAULT_WORKSPACE_DIR.clone().to_string()),
                         base_path: None,
                         output_dir: None,
+                        github_token: None,
                     })
                 } else {
                     Err(x)
@@ -120,6 +132,19 @@ impl Config {
                 .into_diagnostic()?;
         }
         Ok(output_dir.to_path_buf())
+    }
+
+    pub fn get_or_create_repo_dir() -> Result<PathBuf> {
+        let proj_dir = ProjectDirs::from(QUALIFIER, ORG, APP_NAME)
+            .ok_or(miette::miette!(NO_PROJECT_DIR_ERR_STR))?;
+        let repo_dir = proj_dir.data_dir().join(DEFAULT_REPO_DIR_DIR);
+        if !repo_dir.exists() {
+            DirBuilder::new()
+                .recursive(true)
+                .create(&repo_dir)
+                .into_diagnostic()?;
+        }
+        Ok(repo_dir.to_path_buf())
     }
 
     pub fn get_workspace_from(&self, name: &str) -> Result<Workspace> {

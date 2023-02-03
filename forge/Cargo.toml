@@ -1,0 +1,28 @@
+[package]
+name = "forge"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bundle = { version = "0.1.0", path = "../bundle" }
+gate ={ version = "0.1.0", path = "../gate" }
+clap = { version = "4.0.29", features = ["derive"] }
+miette = { version = "4.3.0", features = ["fancy"] }
+serde = { version = "1.0.151", features = ["derive"] }
+serde_json = "1.0.91"
+thiserror = "1.0.38"
+url = "2.3.1"
+axum = { version = "0.6.2", features = ["ws", "http2"] }
+tokio = { version = "1.24.2", features = ["macros", "rt-multi-thread", "tracing"] }
+tracing-subscriber = { version = "0.3.16", features = ["tracing"] }
+tracing = { version = "0.1.37", features = ["max_level_trace", "release_max_level_info", "log"] }
+async-graphql-axum = "5.0.5"
+async-graphql = { version = "5.0.5" }
+oauth2 = "4.3.0"
+dotenv = "0.15.0"
+futures-util = "0.3.25"
+bonsaidb = { version = "0.4.1", features = ["local", "local-async"] }
+uuid = { version = "1.2.2", features = ["serde", "v4", "fast-rng"] }
+graphql_client = "0.12.0"
+reqwest = { version = "0.11.14", features = ["json", "gzip", "brotli"] }
+base64 = "0.21.0"

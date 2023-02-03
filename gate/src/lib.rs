@@ -1,4 +1,4 @@
-use bundle::{Package, Transform};
+use bundle::Package;
 use miette::{Diagnostic, IntoDiagnostic};
 use std::{
     fs::{read_to_string, File},
@@ -45,7 +45,9 @@ pub struct Gate {
     #[knuffel(children(name = "package"))]
     packages: Vec<Package>,
     #[knuffel(children(name = "transform"))]
-    pub transforms: Vec<Transform>,
+    pub default_transforms: Vec<Transform>,
+    #[knuffel(child, unwrap(argument))]
+    pub publisher: String,
 }
 
 impl Default for Gate {
@@ -57,7 +59,8 @@ impl Default for Gate {
             branch: String::from("2023.0.0"),
             distribution: None,
             packages: vec![],
-            transforms: vec![],
+            default_transforms: vec![],
+            publisher: String::from("userland"),
         }
     }
 }
@@ -124,14 +127,14 @@ impl Gate {
             doc.nodes_mut().push(pkg_node);
         }
 
-        for transform in &self.transforms {
-            let transform_node = transform.to_node();
-            doc.nodes_mut().push(transform_node);
-        }
-
         if let Some(distribution) = &self.distribution {
             let distribution_node = distribution.to_node();
             doc.nodes_mut().push(distribution_node);
+        }
+
+        for tr in &self.default_transforms {
+            let tr_node = tr.to_node();
+            doc.nodes_mut().push(tr_node);
         }
 
         node
@@ -142,6 +145,38 @@ impl Gate {
         let mut f = File::create(&self.path)?;
         f.write_all(doc.to_string().as_bytes())?;
         Ok(())
+    }
+}
+
+#[derive(Debug, knuffel::Decode, Clone)]
+pub struct Transform {
+    #[knuffel(arguments)]
+    actions: Vec<String>,
+    #[knuffel(property)]
+    include: Option<String>,
+}
+
+impl Transform {
+    pub fn to_string(&self) -> String {
+        let mut lines = self.actions.clone();
+        if let Some(include_prop) = &self.include {
+            lines.push(format!("<include {}>", include_prop));
+        }
+
+        lines.join("\n")
+    }
+
+    pub fn to_node(&self) -> kdl::KdlNode {
+        let mut node = kdl::KdlNode::new("transform");
+        for (idx, action) in self.actions.iter().enumerate() {
+            node.insert(idx, action.as_str());
+        }
+
+        if let Some(include_prop) = &self.include {
+            node.insert("include", include_prop.as_str());
+        }
+
+        node
     }
 }
 

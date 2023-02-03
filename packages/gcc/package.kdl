@@ -3,3 +3,25 @@ name "developer/gcc"
 source {
 	git "https://github.com/richlowe/gcc" branch="il-10_3_0-arm64"
 }
+
+build "configure" {
+	option "with-gmp-include=/usr/include/gmp"
+	option "with-abi=lp64"
+	option "enable-languages=c,c++"
+	option "disable-shared"
+	option "enable-c99"
+	option "disable-libquadmath"
+	option "disable-libmudflag"
+	option "disable-libgomp"
+	option "disable-decimal-float"
+	option "disable-libatomic"
+	option "disable-libitm"
+	option "disable-libsanitizer"
+	option "disable-libvtv"
+	option "disable-libcilkcrts"
+	option "with-system-zlib"
+	option "enable-__cxa-atexit"
+	option "enable-initfini-array"
+	option "with-gnu-as"
+	option "without-gnu-ld"
+}

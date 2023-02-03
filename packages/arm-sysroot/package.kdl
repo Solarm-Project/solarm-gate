@@ -7,9 +7,9 @@
 //	touch $@
 //
 
-name "developer/cross-base-arm"
+name "developer/arm-sysroot"
 summary "Cross Linker and Headers inside sysroot for ARM cross compilation from x86"
-classification "Development/illumos"
+classification "Development/System"
 project-url "https://illumos.org"
 license-file "README.md"
 license "CDDL 1.0"
@@ -19,7 +19,7 @@ source {
 	file "aarch64_illumos_gate.env" "env/aarch64"
 }
 
-build "custom" {
+build {
 	script "illumos_gate_cross_ld.bash" prototype-dir="usr/src/tools/proto/root_i386-nd"
-	package-sysroot from="proto/root_aarch64/usr/include" target="usr/include" name="aarch64"
+	package-directory src="proto/root_aarch64/usr/include" target="usr/include" name="sysroot"
 }

@@ -131,5 +131,5 @@ pub fn handle_add_source(wks: &Workspace, src: &Sources, pkg: &mut Bundle) -> Re
         }
     };
 
-    pkg.add_source(src_node).into_diagnostic()
+    pkg.add_source(src_node)
 }

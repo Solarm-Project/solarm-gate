@@ -1,4 +1,4 @@
-name "developer/gnu-binutils"
+name "developer/arm-gnu-binutils"
 summary "GNU collection of binary tools like ld, as"
 classification "Development/GNU"
 license-file "COPYING"
@@ -10,7 +10,7 @@ source {
 	git "https://github.com/richlowe/binutils-gdb" branch="illumos-arm64"
 }
 
-build "configure" {
+configure {
 	flag "-I/usr/include/gmp"
 }
 

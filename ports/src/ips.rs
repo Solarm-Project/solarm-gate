@@ -1,9 +1,10 @@
 use std::{
     fs::File,
+    path::PathBuf,
     process::{Command, Stdio},
 };
 
-use crate::workspace::Workspace;
+use crate::{config::Config, derive_source_name, workspace::Workspace};
 use bundle::{Bundle, SourceNode};
 use fs_extra::file::write_all;
 use gate::Gate;
@@ -33,8 +34,6 @@ set name=info.upstream-url value="{project_url}"
 set name=info.source-url value="{source_url}"
 
 license {license_file_name} license='{license_name}'
-
-<transform dir -> drop>
 
 "#;
 //TODO remove drop dir transform here and put it into standard transforms
@@ -89,7 +88,12 @@ pub fn run_generate_filelist(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         Err(miette::miette!("non zero code returned from pkgfmt"))
     }
 }
-pub fn run_mogrify(wks: &Workspace, pkg: &Bundle, gate: Option<Gate>) -> Result<()> {
+pub fn run_mogrify(
+    wks: &Workspace,
+    pkg: &Bundle,
+    gate: Option<Gate>,
+    transform_includes: Option<PathBuf>,
+) -> Result<()> {
     let vars = StringInterpolationVars {
         name: &pkg.get_name(),
         version: &pkg
@@ -140,25 +144,60 @@ pub fn run_mogrify(wks: &Workspace, pkg: &Bundle, gate: Option<Gate>) -> Result<
 
     write_all(manifest_path.join("generated.p5m"), &manifest).into_diagnostic()?;
 
-    let pkg_mogrify_cmd = Command::new("pkgmogrify")
-        .arg(
-            manifest_path
-                .join("filelist.fmt")
-                .to_string_lossy()
-                .to_string(),
-        )
+    let include_path = if let Some(gate) = gate {
+        if !gate.default_transforms.is_empty() {
+            let mut include_str = gate
+                .default_transforms
+                .into_iter()
+                .map(|tr| tr.to_string())
+                .collect::<Vec<String>>()
+                .join("\n");
+            include_str.push_str("\n");
+            let inc_path = manifest_path.join("includes.mog");
+            println!("Adding includes {} to includes.mog", &include_str);
+            write_all(&inc_path, &include_str).into_diagnostic()?;
+            Some(inc_path.to_string_lossy().to_string())
+        } else {
+            println!("Gate {} has no transforms", gate.name);
+            None
+        }
+    } else {
+        println!("Not building against a gate not adding gate transforms");
+        None
+    };
+
+    let mut pkg_mogrify_cmd = Command::new("pkgmogrify");
+
+    if let Some(includes_path) = transform_includes {
+        pkg_mogrify_cmd.arg("-I").arg(&includes_path);
+    }
+    pkg_mogrify_cmd
         .arg(
             manifest_path
                 .join("generated.p5m")
                 .to_string_lossy()
                 .to_string(),
         )
-        .stdout(Stdio::piped())
-        .spawn()
-        .into_diagnostic()?;
+        .arg(
+            manifest_path
+                .join("filelist.fmt")
+                .to_string_lossy()
+                .to_string(),
+        );
+
+    if let Some(includes) = include_path {
+        pkg_mogrify_cmd.arg(&includes);
+    }
+
+    if let Some(mog_file_path) = pkg.get_mogrify_manifest() {
+        pkg_mogrify_cmd.arg(&mog_file_path.to_string_lossy().to_string());
+    }
+
+    pkg_mogrify_cmd.stdout(Stdio::piped());
+    let pkg_mogrify_status = pkg_mogrify_cmd.spawn().into_diagnostic()?;
 
     let pkg_fmt_cmd_status = Command::new("pkgfmt")
-        .stdin(pkg_mogrify_cmd.stdout.unwrap())
+        .stdin(pkg_mogrify_status.stdout.unwrap())
         .stdout(mogrified_manifest)
         .status()
         .into_diagnostic()?;
@@ -249,5 +288,80 @@ pub fn run_lint(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         Ok(())
     } else {
         Err(miette::miette!("non zero code returned from pkglint"))
+    }
+}
+
+pub fn ensure_repo_with_publisher_exists(publisher: &str) -> Result<()> {
+    let repo_base = Config::get_or_create_repo_dir()?;
+
+    if !repo_base.join("pkg5.repository").exists() {
+        let pkg_repo_status = Command::new("pkgrepo")
+            .arg("create")
+            .arg(&repo_base.to_string_lossy().to_string())
+            .stdout(Stdio::inherit())
+            .status()
+            .into_diagnostic()?;
+        if !pkg_repo_status.success() {
+            return Err(miette::miette!(
+                "pkgrepo create failed with non zero exit code"
+            ));
+        }
+    }
+
+    if !repo_base.join("publisher").join(publisher).exists() {
+        let pkg_repo_status = Command::new("pkgrepo")
+            .arg("add-publisher")
+            .arg("-s")
+            .arg(&repo_base.to_string_lossy().to_string())
+            .arg(publisher)
+            .stdout(Stdio::inherit())
+            .status()
+            .into_diagnostic()?;
+        if !pkg_repo_status.success() {
+            return Err(miette::miette!(
+                "pkgrepo create failed with non zero exit code"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn publish_package(wks: &Workspace, pkg: &Bundle, publisher: &str) -> Result<()> {
+    let proto_dir = wks.get_or_create_prototype_dir()?;
+    let build_dir = wks.get_or_create_build_dir()?;
+    let unpack_name = derive_source_name(
+        pkg.package_document.name.clone(),
+        &pkg.package_document.sources[0],
+    );
+    let unpack_path = build_dir.join(&unpack_name);
+    let repo_path = Config::get_or_create_repo_dir()?;
+    let manifest = wks.get_or_create_manifest_dir()?.join("generated.dep.res");
+    let pkgsend_status = Command::new("pkgsend")
+        .arg("publish")
+        .arg("-d")
+        .arg(&proto_dir.to_string_lossy().to_string())
+        .arg("-d")
+        .arg(&unpack_path.to_string_lossy().to_string())
+        .arg("-s")
+        .arg(&repo_path.to_string_lossy().to_string())
+        .arg(&manifest.to_string_lossy().to_string())
+        .stdout(Stdio::inherit())
+        .status()
+        .into_diagnostic()?;
+
+    if pkgsend_status.success() {
+        println!("Package {} built and published sucessfully", pkg.get_name());
+        println!(
+            "Install with pkg set-publisher {}; pkg install -g {} {}",
+            publisher,
+            repo_path.display(),
+            pkg.get_name()
+        );
+        Ok(())
+    } else {
+        Err(miette::miette!(
+            "non zero code returned from pkgsend publish"
+        ))
     }
 }

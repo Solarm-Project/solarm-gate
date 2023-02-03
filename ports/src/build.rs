@@ -4,54 +4,32 @@ use std::{
     process::{Command, Stdio},
 };
 
-use bundle::{BuildType, Bundle};
+use bundle::{Bundle, ConfigureBuildSection, ScriptBuildSection};
 use miette::{IntoDiagnostic, Result, WrapErr};
 
 use crate::{derive_source_name, workspace::Workspace};
 
 pub fn build_package_sources(wks: &Workspace, pkg: &Bundle) -> Result<()> {
-    let build_type: BuildType = pkg
-        .package_document
-        .ensure_build_section()
-        .build_type
-        .clone();
+    match pkg.package_document.ensure_build_section() {
+        bundle::BuildSection::Configure(c) => build_using_automake(wks, pkg, &c),
+        bundle::BuildSection::CMake => todo!(),
+        bundle::BuildSection::Meson => todo!(),
+        bundle::BuildSection::Build(s) => {
+            build_using_scripts(wks, pkg, &s)?;
 
-    match build_type {
-        BuildType::Configure => build_using_automake(wks, pkg),
-        BuildType::CMake => todo!(),
-        BuildType::Meson => todo!(),
-        BuildType::Custom => build_using_scripts(wks, pkg),
-    }?;
-
-    if let Some(sysroot) = &pkg.package_document.ensure_build_section().package_sysroot {
-        let target_path = wks
-            .get_or_create_prototype_dir()?
-            .join("usr/src")
-            .join(&sysroot.name)
-            .join(&sysroot.target);
-        let sysroot_full_from_path = std::path::Path::new("./")
-            .join(&sysroot.from)
-            .canonicalize()
-            .into_diagnostic()?;
-
-        if !target_path.exists() {
-            DirBuilder::new()
-                .recursive(true)
-                .create(&target_path)
-                .into_diagnostic()?;
+            Ok(())
         }
-
-        let mut copy_options = fs_extra::dir::CopyOptions::default();
-        copy_options.overwrite = true;
-        copy_options.content_only = true;
-        fs_extra::dir::copy(sysroot_full_from_path, target_path, &copy_options)
-            .into_diagnostic()?;
-    }
+        bundle::BuildSection::NoBuild => todo!(),
+    }?;
 
     Ok(())
 }
 
-fn build_using_scripts(wks: &Workspace, pkg: &Bundle) -> Result<()> {
+fn build_using_scripts(
+    wks: &Workspace,
+    pkg: &Bundle,
+    build_section: &ScriptBuildSection,
+) -> Result<()> {
     let build_dir = wks.get_or_create_build_dir()?;
     let unpack_name = derive_source_name(
         pkg.package_document.name.clone(),
@@ -59,8 +37,6 @@ fn build_using_scripts(wks: &Workspace, pkg: &Bundle) -> Result<()> {
     );
     let unpack_path = build_dir.join(&unpack_name);
     std::env::set_current_dir(&unpack_path).into_diagnostic()?;
-
-    let build_section = pkg.package_document.ensure_build_section();
 
     for script in &build_section.scripts {
         let status = Command::new(pkg.get_path().join(&script.name))
@@ -90,12 +66,71 @@ fn build_using_scripts(wks: &Workspace, pkg: &Bundle) -> Result<()> {
         let mut copy_options = fs_extra::dir::CopyOptions::default();
         copy_options.overwrite = true;
         copy_options.content_only = true;
-        fs_extra::dir::copy(
-            unpack_path.join(&script.prototype_dir),
-            wks.get_or_create_prototype_dir()?,
-            &copy_options,
-        )
-        .into_diagnostic()?;
+
+        if let Some(prefix) = &pkg.package_document.prefix {
+            let prefix = if prefix.starts_with("/") {
+                &prefix[1..]
+            } else {
+                prefix.as_str()
+            };
+
+            let target_path = wks.get_or_create_prototype_dir()?.join(prefix);
+            if !target_path.exists() {
+                DirBuilder::new()
+                    .recursive(true)
+                    .create(&target_path)
+                    .into_diagnostic()?;
+                println!("Creating target path {}", target_path.display());
+            }
+
+            fs_extra::dir::copy(
+                unpack_path.join(&script.prototype_dir),
+                &target_path,
+                &copy_options,
+            )
+            .into_diagnostic()?;
+        } else {
+            fs_extra::dir::copy(
+                unpack_path.join(&script.prototype_dir),
+                wks.get_or_create_prototype_dir()?,
+                &copy_options,
+            )
+            .into_diagnostic()?;
+        }
+    }
+
+    for package_directory in &build_section.package_directories {
+        let target_path = if let Some(prefix) = &pkg.package_document.prefix {
+            let prefix = if prefix.starts_with("/") {
+                &prefix[1..]
+            } else {
+                prefix.as_str()
+            };
+
+            wks.get_or_create_prototype_dir()?
+                .join(&prefix)
+                .join(&package_directory.target)
+        } else {
+            wks.get_or_create_prototype_dir()?
+                .join(&package_directory.target)
+        };
+        println!("Copying directory to prototype dir");
+        println!("Target Path: {}", target_path.display());
+        let directory_full_from_path = unpack_path.join(&package_directory.src);
+        println!("Source Path: {}", directory_full_from_path.display());
+        if !target_path.exists() {
+            DirBuilder::new()
+                .recursive(true)
+                .create(&target_path)
+                .into_diagnostic()?;
+            println!("Creating target dir");
+        }
+        let mut copy_options = fs_extra::dir::CopyOptions::default();
+        copy_options.overwrite = true;
+        copy_options.content_only = true;
+        fs_extra::dir::copy(directory_full_from_path, target_path, &copy_options)
+            .into_diagnostic()?;
+        println!("Copy suceeded");
     }
 
     println!("Build for package {} finished", pkg.get_name());
@@ -103,7 +138,11 @@ fn build_using_scripts(wks: &Workspace, pkg: &Bundle) -> Result<()> {
     Ok(())
 }
 
-fn build_using_automake(wks: &Workspace, pkg: &Bundle) -> Result<()> {
+fn build_using_automake(
+    wks: &Workspace,
+    pkg: &Bundle,
+    build_section: &ConfigureBuildSection,
+) -> Result<()> {
     let dotenv_env: Vec<(String, String)> =
         crate::env::get_environment(pkg.get_path().parent().unwrap())?;
     let build_dir = wks.get_or_create_build_dir()?;
@@ -116,7 +155,6 @@ fn build_using_automake(wks: &Workspace, pkg: &Bundle) -> Result<()> {
 
     let mut option_vec: Vec<_> = vec![];
     let mut env_flags: HashMap<String, String> = HashMap::new();
-    let build_section = pkg.package_document.ensure_build_section();
 
     for option in build_section.options.iter() {
         let opt_arg = format!("--{}", option.option);

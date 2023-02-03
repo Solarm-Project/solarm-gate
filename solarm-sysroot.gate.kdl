@@ -1,26 +1,48 @@
 name "solarm-sysroot"
 version "0.5.11"
 branch "2023.0.0"
+publisher "solarm.org"
 
-distribution type="tarball"
+transform include="actuators"
+transform include="docs"
+transform include="devel"
+transform include="locale"
+transform include="autopyc"
+transform include="python"
+transform include="defaults"
+transform include="libtool-drop"
+transform include="archive-libraries-drop"
+transform include="ignore-gcc-usr-lib"
 
 package {
-	name "developer/gnu-binutils"
+	name "developer/arm-gnu-binutils"
 	version "2.39"
-	build {
+	prefix "/opt/solarm"
+	configure {
 		option "with-sysroot"
 		option "target=aarch64-solaris2.11"
 		option "enable-initfini-array"
-	}	
+	}
 }
 
 package {
-	name "developer/cross-base-arm"
+	name "developer/arm-sysroot"
+	prefix "/opt/solarm"
 }
 
 package {
 	name "developer/gcc"
-	version "10.3.0"	
+	version "10.3.0"
+	prefix "/opt/solarm"
+	configure {
+		option "target=aarch64-solaris2.11"
+		option "with-build-sysroot=/opt/solarm"
+		option "with-headers=/opt/solarm/usr/include"
+		option "with-as=/opt/solarm/usr/gnu/bin/aarch64-solaris2.11-as"
+		option "with-ld=/opt/solarm/opt/onbld/bin/amd64/ld"
+	}
+	dependency "developer/cross-base-arm"
+	dependency "developer/gnu-binutils"
 }
 
 

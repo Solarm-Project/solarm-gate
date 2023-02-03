@@ -1,5 +1,5 @@
 [workspace]
-members = ["bundle", "gate", "ports"]
+members = ["bundle", "gate", "forge_api", "ports", "forge"]
 
 
 [patch.crates-io]
