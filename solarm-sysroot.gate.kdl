@@ -10,9 +10,10 @@ transform include="locale"
 transform include="autopyc"
 transform include="python"
 transform include="defaults"
-transform include="libtool-drop"
-transform include="archive-libraries-drop"
-transform include="ignore-gcc-usr-lib"
+//transform include="libtool-drop"
+//transform include="archive-libraries-drop"
+//transform include="ignore-gcc-usr-lib"
+transform "<transform file dir link hardlink path=opt/solarm/share/info/dir -> drop>"
 
 package {
 	name "developer/solarm/cross/arm/gnu-binutils"
@@ -35,8 +36,7 @@ package {
 	prefix "/opt/solarm"
 	configure {
 		option "target=aarch64-solaris2.11"
-		option "with-build-sysroot=/opt/solarm/sysroot"
-		option "with-headers=/opt/solarm/sysroot/usr/include"
+		option "with-sysroot=/opt/solarm/sysroot"
 		option "with-as=/opt/solarm/bin/aarch64-solaris2.11-as"
 		option "with-ld=/opt/solarm/bin/amd64/ld"
 	}
@@ -44,4 +44,6 @@ package {
 	dependency "developer/solarm/cross/arm/sysroot"
 }
 
-
+package {
+	name "developer/solarm/cross/arm/sysroot-libraries"
+}

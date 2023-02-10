@@ -58,48 +58,52 @@ fn build_using_scripts(
             )));
         }
 
-        println!(
-            "Copying prototype directory {} to workspace prototype directory",
-            &script.prototype_dir.display()
-        );
+        if let Some(prototype_dir) = &script.prototype_dir {
+            println!(
+                "Copying prototype directory {} to workspace prototype directory",
+                &prototype_dir.display()
+            );
 
-        let mut copy_options = fs_extra::dir::CopyOptions::default();
-        copy_options.overwrite = true;
-        copy_options.content_only = true;
+            let mut copy_options = fs_extra::dir::CopyOptions::default();
+            copy_options.overwrite = true;
+            copy_options.content_only = true;
 
-        if let Some(prefix) = &pkg.package_document.prefix {
-            let prefix = if prefix.starts_with("/") {
-                &prefix[1..]
+            if let Some(prefix) = &pkg.package_document.prefix {
+                let prefix = if prefix.starts_with("/") {
+                    &prefix[1..]
+                } else {
+                    prefix.as_str()
+                };
+
+                let target_path = wks.get_or_create_prototype_dir()?.join(prefix);
+                if !target_path.exists() {
+                    DirBuilder::new()
+                        .recursive(true)
+                        .create(&target_path)
+                        .into_diagnostic()?;
+                    println!("Creating target path {}", target_path.display());
+                }
+
+                let src_path = unpack_path.join(&prototype_dir);
+
+                println!("src: {}", &src_path.display());
+                println!("exists?: {}", src_path.exists());
+                println!("target: {}", &target_path.display());
+                println!("exists?: {}", &target_path.exists());
+
+                fs_extra::dir::copy(&src_path, &target_path, &copy_options).into_diagnostic()?;
             } else {
-                prefix.as_str()
-            };
-
-            let target_path = wks.get_or_create_prototype_dir()?.join(prefix);
-            if !target_path.exists() {
-                DirBuilder::new()
-                    .recursive(true)
-                    .create(&target_path)
-                    .into_diagnostic()?;
-                println!("Creating target path {}", target_path.display());
+                fs_extra::dir::copy(
+                    unpack_path.join(&prototype_dir),
+                    wks.get_or_create_prototype_dir()?,
+                    &copy_options,
+                )
+                .into_diagnostic()?;
             }
-
-            fs_extra::dir::copy(
-                unpack_path.join(&script.prototype_dir),
-                &target_path,
-                &copy_options,
-            )
-            .into_diagnostic()?;
-        } else {
-            fs_extra::dir::copy(
-                unpack_path.join(&script.prototype_dir),
-                wks.get_or_create_prototype_dir()?,
-                &copy_options,
-            )
-            .into_diagnostic()?;
         }
     }
 
-    for package_directory in &build_section.package_directories {
+    for install_directive in &build_section.install_directives {
         let target_path = if let Some(prefix) = &pkg.package_document.prefix {
             let prefix = if prefix.starts_with("/") {
                 &prefix[1..]
@@ -109,15 +113,15 @@ fn build_using_scripts(
 
             wks.get_or_create_prototype_dir()?
                 .join(&prefix)
-                .join(&package_directory.target)
+                .join(&install_directive.target)
         } else {
             wks.get_or_create_prototype_dir()?
-                .join(&package_directory.target)
+                .join(&install_directive.target)
         };
         println!("Copying directory to prototype dir");
         println!("Target Path: {}", target_path.display());
-        let directory_full_from_path = unpack_path.join(&package_directory.src);
-        println!("Source Path: {}", directory_full_from_path.display());
+        let src_full_path = unpack_path.join(&install_directive.src);
+        println!("Source Path: {}", src_full_path.display());
         if !target_path.exists() {
             DirBuilder::new()
                 .recursive(true)
@@ -125,11 +129,41 @@ fn build_using_scripts(
                 .into_diagnostic()?;
             println!("Creating target dir");
         }
-        let mut copy_options = fs_extra::dir::CopyOptions::default();
-        copy_options.overwrite = true;
-        copy_options.content_only = true;
-        fs_extra::dir::copy(directory_full_from_path, target_path, &copy_options)
-            .into_diagnostic()?;
+
+        if let Some(pattern) = &install_directive.pattern {
+            let mut copy_options = fs_extra::file::CopyOptions::default();
+            copy_options.overwrite = true;
+            let files = file_matcher::FilesNamed::regex(pattern)
+                .within(src_full_path)
+                .find()
+                .into_diagnostic()?;
+            for f in files {
+                let target_file = target_path.join(
+                    f.file_name()
+                        .unwrap_or(std::ffi::OsStr::new("failed_install_directive.err")),
+                );
+                fs_extra::file::copy(&f, &target_file, &copy_options).into_diagnostic()?;
+            }
+        } else if let Some(fmatch) = &install_directive.fmatch {
+            let mut copy_options = fs_extra::file::CopyOptions::default();
+            copy_options.overwrite = true;
+            let files = file_matcher::FilesNamed::wildmatch(fmatch)
+                .within(src_full_path)
+                .find()
+                .into_diagnostic()?;
+            for f in files {
+                let target_file = target_path.join(
+                    f.file_name()
+                        .unwrap_or(std::ffi::OsStr::new("failed_install_directive.err")),
+                );
+                fs_extra::file::copy(&f, &target_file, &copy_options).into_diagnostic()?;
+            }
+        } else {
+            let mut copy_options = fs_extra::dir::CopyOptions::default();
+            copy_options.overwrite = true;
+            copy_options.content_only = true;
+            fs_extra::dir::copy(src_full_path, target_path, &copy_options).into_diagnostic()?;
+        }
         println!("Copy suceeded");
     }
 

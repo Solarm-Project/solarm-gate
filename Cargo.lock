@@ -1228,6 +1228,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "file-matcher"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d54a429ce9698e7d0de61e7f570477cc2d2f8b3f48f976b2edcfdbd797c085eb"
+dependencies = [
+ "fs_extra",
+ "regex",
+ "serde",
+ "wildmatch",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2476,6 +2488,7 @@ dependencies = [
  "curl",
  "directories",
  "dotenv",
+ "file-matcher",
  "fs_extra",
  "gate",
  "graphql_client",
@@ -3723,6 +3736,12 @@ checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
 ]
+
+[[package]]
+name = "wildmatch"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee583bdc5ff1cf9db20e9db5bb3ff4c3089a8f6b8b31aff265c9aba85812db86"
 
 [[package]]
 name = "winapi"

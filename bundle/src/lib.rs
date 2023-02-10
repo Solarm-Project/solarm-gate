@@ -346,10 +346,10 @@ impl Package {
                             .into_iter()
                             .chain(other_scripts.scripts.clone())
                             .collect(),
-                        package_directories: s
-                            .package_directories
+                        install_directives: s
+                            .install_directives
                             .into_iter()
-                            .chain(other_scripts.package_directories.clone())
+                            .chain(other_scripts.install_directives.clone())
                             .collect(),
                     })),
 
@@ -633,21 +633,25 @@ pub struct ConfigureBuildSection {
 pub struct ScriptBuildSection {
     #[knuffel(children(name = "script"))]
     pub scripts: Vec<ScriptNode>,
-    #[knuffel(children(name = "package-directory"))]
-    pub package_directories: Vec<PackageDirectoryNode>,
+    #[knuffel(children(name = "install"))]
+    pub install_directives: Vec<InstallDirectiveNode>,
 }
 
 #[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
-pub struct PackageDirectoryNode {
+pub struct InstallDirectiveNode {
     #[knuffel(property)]
     pub src: String,
     #[knuffel(property)]
     pub target: String,
     #[knuffel(property)]
     pub name: String,
+    #[knuffel(property)]
+    pub pattern: Option<String>,
+    #[knuffel(property(name = "match"))]
+    pub fmatch: Option<String>,
 }
 
-impl PackageDirectoryNode {
+impl InstallDirectiveNode {
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("package-directory");
         node.insert("src", self.src.as_str());
@@ -662,17 +666,19 @@ pub struct ScriptNode {
     #[knuffel(argument)]
     pub name: String,
     #[knuffel(property)]
-    pub prototype_dir: PathBuf,
+    pub prototype_dir: Option<PathBuf>,
 }
 
 impl ScriptNode {
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("script");
         node.insert(0, self.name.as_str());
-        node.insert(
-            "prototype-dir",
-            self.prototype_dir.to_string_lossy().to_string().as_str(),
-        );
+        if let Some(prototype_dir) = &self.prototype_dir {
+            node.insert(
+                "prototype-dir",
+                prototype_dir.to_string_lossy().to_string().as_str(),
+            );
+        }
         node
     }
 }
@@ -730,7 +736,7 @@ impl BuildSection {
                     doc.nodes_mut().push(script.to_node());
                 }
 
-                for package_directory in &s.package_directories {
+                for package_directory in &s.install_directives {
                     doc.nodes_mut().push(package_directory.to_node());
                 }
 
