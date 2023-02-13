@@ -1,0 +1,3 @@
+[submodule "file-matcher"]
+	path = file-matcher
+	url = git@github.com:Toasterson/file-matcher-rs.git

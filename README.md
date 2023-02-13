@@ -10,3 +10,37 @@ To build the distribution use the build packages from the namespace "developer/d
 - define a update workflow and guide the user through it
 - be able to view failed steps
 - force subtools to use the right diagnostic output places
+
+### Sysroot Packages
+** Working **
+- Binutils Cross
+- Headers and linker (sysroot-base)
+- GCC-bootstrap
+
+** Next **
+- illumos-sysroot-libraries
+  - crt
+  - ssp_ns
+  - libc
+  - libm (aarch64)
+  - libmd
+  - libmp
+  - libnsl
+  - libsocket
+  - libkstat
+  - librt
+  - libpthread
+  - libdl
+- zlib
+- libxml2 (after zlib and sysroot-libraries)
+- openssl
+- idnkit
+- gcc-full
+- nspr
+- nss
+- xorriso
+- u-boot
+- dtc
+
+### illumos-gate
+**illumos-gate**
