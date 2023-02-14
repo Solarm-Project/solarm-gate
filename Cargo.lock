@@ -1053,6 +1053,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1230,8 +1239,6 @@ dependencies = [
 [[package]]
 name = "file-matcher"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d54a429ce9698e7d0de61e7f570477cc2d2f8b3f48f976b2edcfdbd797c085eb"
 dependencies = [
  "fs_extra",
  "regex",
@@ -2502,6 +2509,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.6",
+ "shellexpand",
  "thiserror",
  "url",
 ]
@@ -2950,6 +2958,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shellexpand"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd1c7ddea665294d484c39fd0c0d2b7e35bbfe10035c5fe1854741a57f6880e1"
+dependencies = [
+ "dirs",
 ]
 
 [[package]]

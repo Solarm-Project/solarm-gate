@@ -23,11 +23,12 @@ source {
 build {
 	script "illumos_gate_cross_libs.bash"
 	install pattern=".*.o|libc.*|libm.*|libsocket.*|libkstat.*|libnsl.*|libmd.*|libssp.*|librt.*|libdl.*|libposix4.*|libpthread.*" \
-		src="proto/root_aarch64/usr/lib/" \
-		target="sysroot/usr/lib" \
-		name="usr/lib"
-	install pattern=".*.o|libc.*|libm.*|libsocket.*|libkstat.*|libnsl.*|libmd.*|librt.*|libdl.*|libposix4.*|libpthread.*" \
-		src="proto/root_aarch64/lib/" \
+		src="proto/root_aarch64/lib" \
 		target="sysroot/lib" \
-		name="lib"
+		name="libraries"
+	
+	install pattern=".*.o|libc.*|libm.*|libsocket.*|libkstat.*|libnsl.*|libmd.*|libssp.*|librt.*|libdl.*|libposix4.*|libpthread.*" \
+		src="proto/root_aarch64/usr/lib" \
+		target="sysroot/usr/lib" \
+		name="libraries"
 }

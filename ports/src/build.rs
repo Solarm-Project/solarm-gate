@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
     fs::DirBuilder,
+    io::Write,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -41,6 +43,13 @@ fn build_using_scripts(
     for script in &build_section.scripts {
         let status = Command::new(pkg.get_path().join(&script.name))
             .stdout(Stdio::inherit())
+            .env(
+                "PROTO_DIR",
+                wks.get_or_create_prototype_dir()
+                    .into_diagnostic()?
+                    .into_os_string(),
+            )
+            .env("UNPACK_DIR", &unpack_path.clone().into_os_string())
             .status()
             .into_diagnostic()?;
 
@@ -134,30 +143,18 @@ fn build_using_scripts(
             let mut copy_options = fs_extra::file::CopyOptions::default();
             copy_options.overwrite = true;
             let files = file_matcher::FilesNamed::regex(pattern)
-                .within(src_full_path)
+                .within(&src_full_path)
                 .find()
                 .into_diagnostic()?;
-            for f in files {
-                let target_file = target_path.join(
-                    f.file_name()
-                        .unwrap_or(std::ffi::OsStr::new("failed_install_directive.err")),
-                );
-                fs_extra::file::copy(&f, &target_file, &copy_options).into_diagnostic()?;
-            }
+            println!("Copying via rsync");
+            copy_with_rsync(wks, &src_full_path, &target_path, files)?;
         } else if let Some(fmatch) = &install_directive.fmatch {
-            let mut copy_options = fs_extra::file::CopyOptions::default();
-            copy_options.overwrite = true;
             let files = file_matcher::FilesNamed::wildmatch(fmatch)
-                .within(src_full_path)
+                .within(&src_full_path)
                 .find()
                 .into_diagnostic()?;
-            for f in files {
-                let target_file = target_path.join(
-                    f.file_name()
-                        .unwrap_or(std::ffi::OsStr::new("failed_install_directive.err")),
-                );
-                fs_extra::file::copy(&f, &target_file, &copy_options).into_diagnostic()?;
-            }
+            println!("Copying via rsync");
+            copy_with_rsync(wks, &src_full_path, &target_path, files)?;
         } else {
             let mut copy_options = fs_extra::dir::CopyOptions::default();
             copy_options.overwrite = true;
@@ -170,6 +167,60 @@ fn build_using_scripts(
     println!("Build for package {} finished", pkg.get_name());
 
     Ok(())
+}
+
+fn copy_with_rsync<P: AsRef<Path>>(
+    wks: &Workspace,
+    from: P,
+    to: P,
+    file_list: Vec<PathBuf>,
+) -> Result<()> {
+    //write file_list to known location into file
+    let contents_file_path = wks.get_or_create_build_dir()?.join("install_file_list.txt");
+
+    let src_path_string = from.as_ref().to_string_lossy().to_string();
+
+    let file_list = file_list
+        .into_iter()
+        .map(|p| {
+            p.to_string_lossy()
+                .to_string()
+                .replace(&src_path_string, "")
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    println!("writing file list:\n{}", &file_list);
+
+    let mut contents_file = std::fs::File::create(&contents_file_path).into_diagnostic()?;
+    contents_file
+        .write_all(&mut file_list.as_bytes())
+        .into_diagnostic()?;
+    drop(contents_file);
+    let contents_file_arg = format!(
+        "--files-from={}",
+        contents_file_path.to_string_lossy().to_string()
+    );
+
+    // point rsync command to it to copy over selected files
+    let rsync_status = Command::new("rsync")
+        .arg("-avp")
+        .arg(&contents_file_arg)
+        .arg(path_2_string(from))
+        .arg(path_2_string(to))
+        .stdout(Stdio::inherit())
+        .status()
+        .into_diagnostic()?;
+
+    if rsync_status.success() {
+        Ok(())
+    } else {
+        Err(miette::miette!("failed to copy directories with rsync"))
+    }
+}
+
+fn path_2_string<P: AsRef<Path>>(path: P) -> String {
+    path.as_ref().to_string_lossy().to_string()
 }
 
 fn build_using_automake(
@@ -202,17 +253,31 @@ fn build_using_automake(
     }
 
     for flag in build_section.flags.iter() {
-        for flag_name in vec![
-            String::from("CFLAGS"),
-            String::from("CXXFLAGS"),
-            String::from("CPPFLAGS"),
-            String::from("FFLAGS"),
-        ] {
+        let flag_value = expand_env(&flag.flag)?;
+
+        if let Some(flag_name) = &flag.flag_name {
+            let flag_name = flag_name.to_uppercase();
             if env_flags.contains_key(&flag_name) {
                 let flag_ref = env_flags.get_mut(&flag_name).unwrap();
-                flag_ref.push_str(&flag.flag);
+                flag_ref.push_str(" ");
+                flag_ref.push_str(&flag_value);
             } else {
-                env_flags.insert(flag_name, flag.flag.clone());
+                env_flags.insert(flag_name, flag_value.clone());
+            }
+        } else {
+            for flag_name in vec![
+                String::from("CFLAGS"),
+                String::from("CXXFLAGS"),
+                String::from("CPPFLAGS"),
+                String::from("FFLAGS"),
+            ] {
+                if env_flags.contains_key(&flag_name) {
+                    let flag_ref = env_flags.get_mut(&flag_name).unwrap();
+                    flag_ref.push_str(" ");
+                    flag_ref.push_str(&flag_value);
+                } else {
+                    env_flags.insert(flag_name, flag_value.clone());
+                }
             }
         }
     }
@@ -270,4 +335,20 @@ fn build_using_automake(
     crate::compile::run_compile(wks, pkg).wrap_err("compilation step failed")?;
 
     crate::install::run_install(wks, pkg).wrap_err("installation step failed")
+}
+
+#[inline(never)]
+fn can_expand_value(value: &str) -> bool {
+    value.contains("$")
+}
+
+#[inline(never)]
+fn expand_env(value: &str) -> Result<String> {
+    if can_expand_value(value) {
+        shellexpand::env(value)
+            .map(|r| r.to_string())
+            .into_diagnostic()
+    } else {
+        Ok(value.clone().to_string())
+    }
 }

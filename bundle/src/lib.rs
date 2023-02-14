@@ -21,7 +21,7 @@ pub enum BundleError {
     UrlParseError(#[from] url::ParseError),
     #[error("unknown build type {0}")]
     UnknownBuildType(String),
-    #[error("build types {0} and {1} are not mergable")]
+    #[error("build types {0} and {1} are not mergeable")]
     NonMergableBuildSections(String, String),
 }
 
@@ -332,6 +332,7 @@ impl Package {
                                 .collect(),
                         }))
                     }
+                    BuildSection::NoBuild => Ok(BuildSection::Configure(other_configure.clone())),
                     x => Err(BundleError::NonMergableBuildSections(
                         x.to_string(),
                         build_section.clone().to_string(),
@@ -352,7 +353,7 @@ impl Package {
                             .chain(other_scripts.install_directives.clone())
                             .collect(),
                     })),
-
+                    BuildSection::NoBuild => Ok(BuildSection::Build(other_scripts.clone())),
                     x => Err(BundleError::NonMergableBuildSections(
                         x.to_string(),
                         build_section.to_string(),
@@ -687,6 +688,8 @@ impl ScriptNode {
 pub struct BuildFlagNode {
     #[knuffel(argument)]
     pub flag: String,
+    #[knuffel(property(name = "name"))]
+    pub flag_name: Option<String>,
 }
 
 impl BuildFlagNode {

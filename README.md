@@ -16,8 +16,6 @@ To build the distribution use the build packages from the namespace "developer/d
 - Binutils Cross
 - Headers and linker (sysroot-base)
 - GCC-bootstrap
-
-** Next **
 - illumos-sysroot-libraries
   - crt
   - ssp_ns
@@ -34,6 +32,8 @@ To build the distribution use the build packages from the namespace "developer/d
 - zlib
 - libxml2 (after zlib and sysroot-libraries)
 - openssl
+
+** Next **
 - idnkit
 - gcc-full
 - nspr

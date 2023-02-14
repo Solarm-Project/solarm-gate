@@ -8,12 +8,15 @@ transform include="docs"
 transform include="devel"
 transform include="locale"
 transform include="autopyc"
-transform include="python"
+//transform include="python"
 transform include="defaults"
 //transform include="libtool-drop"
 //transform include="archive-libraries-drop"
 //transform include="ignore-gcc-usr-lib"
 transform "<transform file dir link hardlink path=opt/solarm/share/info/dir -> drop>"
+
+// pkgdepend seems to have problems while checking cross compile dependencies
+transform "<transform file path=opt/solarm/sysroot/.* -> add pkg.depend.bypass-generate .*>"
 
 package {
 	name "developer/solarm/cross/arm/gnu-binutils"
@@ -46,4 +49,46 @@ package {
 
 package {
 	name "developer/solarm/cross/arm/sysroot-libraries"
+}
+
+package {
+	name "developer/solarm/cross/arm/zlib"
+
+	build {
+		script "build_and_install.sh"
+	}
+}
+
+package {
+	name "developer/solarm/cross/arm/libxml2"
+	prefix "/opt/solarm/sysroot/usr"
+
+	configure {
+		flag "/opt/solarm/bin/aarch64-solaris2.11-gcc" name="CC"
+		flag "--sysroot=/opt/solarm/sysroot"
+		option "host=aarch64-solaris2.11"
+		option "without-zlib" //TODO Check why we did not build with zlib
+		flag "/opt/solarm/bin:$PATH" name="PATH"
+	}
+}
+
+package {
+	name "developer/solarm/cross/arm/openssl"
+	prefix "/opt/solarm/sysroot/usr"
+
+	build {
+		script "build_and_install.sh"
+	}
+}
+
+package {
+	name "developer/solarm/cross/arm/idnkit"
+	prefix "/opt/solarm/sysroot/usr"
+
+	configure {
+		option "target=aarch64-solaris2.11"
+		option "with-sysroot=/opt/solarm/sysroot"
+		flag "/opt/solarm/bin/aarch64-solaris2.11-gcc" name="CC"
+		flag "/opt/solarm/bin:$PATH" name="PATH"	
+	}
 }

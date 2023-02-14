@@ -1,5 +1,17 @@
 name "zlib"
+summary "A Massively Spiffy Yet Delicately Unobtrusive Compression Library"
+classification "System/Libraries"
+project-url "https://zlib.net/"
+license-file "zlib.license"
+license "zlib license"
+prefix "/usr"
 
 source {    
 	archive "https://zlib.net/fossils/zlib-1.2.12.tar.gz" sha512="cc2366fa45d5dfee1f983c8c51515e0cff959b61471e2e8d24350dea22d3f6fcc50723615a911b046ffc95f51ba337d39ae402131a55e6d1541d3b095d6c0a14"
+	file "zlib.license"
 }
+
+// OpenIndiana includes a Mapfile
+// https://github.com/OpenIndiana/oi-userland/blob/oi/hipster/components/library/zlib/mapfile
+
+// This configure script is not Autoconf generated

@@ -4,3 +4,4 @@ members = ["bundle", "gate", "forge_api", "ports", "forge"]
 
 [patch.crates-io]
 compress-tools = { git = "https://github.com/Toasterson/compress-tools-rs" }
+file-matcher = { path = "file-matcher" }
