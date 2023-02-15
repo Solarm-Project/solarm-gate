@@ -1,6 +1,16 @@
-name "idnkit"
+name "library/idnkit"
+summary "A popular internationalization library"
+classification "System/Internationalization"
+project-url "https://jprs.co.jp/idn"
+license-file "LICENSE.txt"
+license "JPRS"
+prefix "/usr"
 
 source {
-    archive "http://jprs.co.jp/idn/idnkit-2.3.tar.bz2" sha512="cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+    archive "https://jprs.co.jp/idn/idnkit-2.3.tar.bz2" sha512="a0cbc111d4b7d5f444c9b79ae76378fd2edf18097adca27d5ebf811e12091f609ec45d2c62a95b1e295bd1fa644bd8a38d79841f7f4e85dcd1f6a1cd5ca622e4"
 }
 
+configure {
+    option "with-iconv=no"
+    flag "-DSUN_CHANGE"
+}

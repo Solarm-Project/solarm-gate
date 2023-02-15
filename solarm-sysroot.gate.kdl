@@ -86,7 +86,7 @@ package {
 	prefix "/opt/solarm/sysroot/usr"
 
 	configure {
-		option "target=aarch64-solaris2.11"
+		option "host=aarch64-solaris2.11"
 		option "with-sysroot=/opt/solarm/sysroot"
 		flag "/opt/solarm/bin/aarch64-solaris2.11-gcc" name="CC"
 		flag "/opt/solarm/bin:$PATH" name="PATH"	
