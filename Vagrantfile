@@ -87,8 +87,9 @@ Vagrant.configure("2") do |config|
             developer/gcc-7 \
             metapackages/build-essential \
             library/mpc \
-            system/library/gcc-4-runtime \
-            system/library/g++-4-runtime \
+            system/library/gcc-10-runtime \
+            system/library/g++-10-runtime \
+            system/library/gcc-10-compat-links \
             jq
     SHELL
 

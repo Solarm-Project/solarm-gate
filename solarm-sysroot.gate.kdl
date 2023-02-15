@@ -24,7 +24,7 @@ package {
 	prefix "/opt/solarm"
 	configure {
 		option "with-sysroot"
-		option "target=aarch64-solaris2.11"
+		option "target=aarch64-unknown-solaris2.11"
 		option "enable-initfini-array"
 	}
 }
@@ -38,9 +38,9 @@ package {
 	version "10.3.0"
 	prefix "/opt/solarm"
 	configure {
-		option "target=aarch64-solaris2.11"
+		option "target=aarch64-unknown-solaris2.11"
 		option "with-sysroot=/opt/solarm/sysroot"
-		option "with-as=/opt/solarm/bin/aarch64-solaris2.11-as"
+		option "with-as=/opt/solarm/bin/aarch64-unknown-solaris2.11-as"
 		option "with-ld=/opt/solarm/bin/amd64/ld"
 		option "enable-languages=c,c++"
 		option "disable-shared"
@@ -59,9 +59,9 @@ package {
 	version "10.3.0"
 	prefix "/opt/solarm"
 	configure {
-		option "target=aarch64-solaris2.11"
+		option "target=aarch64-unknown-solaris2.11"
 		option "with-sysroot=/opt/solarm/sysroot"
-		option "with-as=/opt/solarm/bin/aarch64-solaris2.11-as"
+		option "with-as=/opt/solarm/bin/aarch64-unknown-solaris2.11-as"
 		option "with-ld=/opt/solarm/bin/amd64/ld"
 		option "enable-languages=c,c++"
 		flag "-g -O2 -mno-outline-atomics -mtls-dialect=trad" name="CFLAGS_FOR_TARGET"		
@@ -84,11 +84,10 @@ package {
 	prefix "/opt/solarm/sysroot/usr"
 
 	configure {
-		flag "/opt/solarm/bin/aarch64-solaris2.11-gcc" name="CC"
+		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" name="CC"
 		flag "--sysroot=/opt/solarm/sysroot"
-		option "host=aarch64-solaris2.11"
+		option "host=aarch64-unknown-solaris2.11"
 		option "without-zlib" //TODO Check why we did not build with zlib
-		flag "/opt/solarm/bin:$PATH" name="PATH"
 	}
 }
 
@@ -106,9 +105,8 @@ package {
 	prefix "/opt/solarm/sysroot/usr"
 
 	configure {
-		option "host=aarch64-solaris2.11"
+		option "host=aarch64-unknown-solaris2.11"
 		option "with-sysroot=/opt/solarm/sysroot"
-		flag "/opt/solarm/bin/aarch64-solaris2.11-gcc" name="CC"
-		flag "/opt/solarm/bin:$PATH" name="PATH"	
+		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" name="CC"
 	}
 }

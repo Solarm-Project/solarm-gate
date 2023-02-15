@@ -22,5 +22,7 @@ source {
 
 build {
 	script "illumos_gate_cross_ld.bash" prototype-dir="usr/src/tools/proto/root_i386-nd/opt/onbld"
-	package-directory src="proto/root_aarch64/usr/include" target="sysroot/usr/include" name="sysroot"
+	install src="proto/root_aarch64/usr/include" \
+			target="sysroot/usr/include" \
+			name="sysroot"
 }
