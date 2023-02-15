@@ -32,9 +32,9 @@ To build the distribution use the build packages from the namespace "developer/d
 - libxml2 (after zlib and sysroot-libraries)
 - openssl
 - idnkit
+- gcc-full
 
 ** Next **
-- gcc-full
 - nspr
 - nss
 - xorriso
