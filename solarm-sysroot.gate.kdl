@@ -110,3 +110,36 @@ package {
 		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" name="CC"
 	}
 }
+
+package {
+	name "developer/solarm/cross/arm/nspr"
+	prefix "/opt/solarm/sysroot/usr"
+
+	configure {
+		option "build=i386-pc-solaris2.11"
+		option "target=aarch64-unknown-solaris2.11"
+		option "libdir=/opt/solarm/sysroot/usr/lib/mps"
+		option "bindir=/opt/solarm/sysroot/usr/bin"
+		option "includedir=/opt/solarm/sysroot/usr/include/mps"
+		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc --sysroot=/opt/solarm/sysroot" name="CC"
+	}
+}
+
+package {
+	name "developer/solarm/cross/arm/nss"
+
+	build {
+		script "build_and_install.sh"
+	}
+}
+
+package {
+	name "developer/solarm/cross/arm/xorriso"
+	prefix "/opt/solarm/sysroot/usr"
+
+	configure {
+		option "build=i386-pc-solaris2.11"
+		option "host=aarch64-unknown-solaris2.11"
+		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc --sysroot=/opt/solarm/sysroot" name="CC"
+	}
+}

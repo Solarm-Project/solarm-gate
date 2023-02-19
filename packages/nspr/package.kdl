@@ -1,5 +1,14 @@
 name "nspr"
+summary "Netscape Portable Runtime (NSPR) provides a platform-neutral API for system level and libc-like functions."
+classification "System/Libraries"
+project-url "https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSPR"
+license-file "nspr.license"
+license "MPL v2.0"
+prefix "/usr"
 
 source {
 	git "https://github.com/richlowe/nspr" branch="illumos-arm64"
+	file "nspr.license"
 }
+
+

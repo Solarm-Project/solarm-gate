@@ -1,6 +1,16 @@
 name "nss"
+summary "Network Security Services (NSS) is a set of libraries designed to support cross-platform development of security-enabled client and server applications. Applications built with NSS can support SSL v3, TLS, PKCS #5, PKCS #7, PKCS #11, PKCS #12, S/MIME, X.509 v3 certificates, and other security standards."
+classification "System/Libraries"
+project-url "https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS"
+license-file "nss.license"
+license "MPL v2.0"
 
 source {
 	git "https://github.com/richlowe/nss" branch="illumos-arm64"
-	overlay "nss_build"
+	directory "nss_build"
+	file "nss.license"
+
+	// This is order specific since we need to have a copy of illumos gate available
+	git "https://github.com/richlowe/illumos-gate" branch="arm64-gate" directory="illumos-gate"	
+	file "aarch64_illumos_gate.env" "../illumos-gate/env/aarch64"
 }

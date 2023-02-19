@@ -1,0 +1,3 @@
+dir path=var/lib/garage
+dir path=var/lib/garage/meta
+dir path=var/lib/garage/data

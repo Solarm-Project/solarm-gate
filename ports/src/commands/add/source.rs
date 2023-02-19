@@ -81,6 +81,7 @@ pub fn handle_add_source(wks: &Workspace, src: &Sources, pkg: &mut Bundle) -> Re
             tag: tag.as_deref().map(|s| String::from(s)),
             archive: None,
             must_stay_as_repo: None,
+            directory: None,
         }),
         Sources::File {
             local_path,

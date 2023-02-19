@@ -1,0 +1,20 @@
+--- a/src/rpc/Cargo.toml	2023-02-18 16:16:13.451492392 +0000
++++ b/src/rpc/Cargo.toml	2023-01-02 13:32:45.000000000 +0000
+@@ -2,7 +2,7 @@
+ name = "garage_rpc"
+ version = "0.8.1"
+ authors = ["Alex Auvolat <alex@adnab.me>"]
+-edition = "2018"
++edition = "2021"
+ license = "AGPL-3.0"
+ description = "Cluster membership management and RPC protocol for the Garage object store"
+ repository = "https://git.deuxfleurs.fr/Deuxfleurs/garage"
+@@ -38,7 +38,7 @@
+ reqwest = { version = "0.11", optional = true, default-features = false, features = ["rustls-tls-manual-roots", "json"] }
+ 
+ # newer version requires rust edition 2021
+-pnet_datalink = "0.28"
++pnet_datalink = "0.33"
+
+ futures = "0.3"
+ futures-util = "0.3"

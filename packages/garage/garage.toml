@@ -1,0 +1,19 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+
+db_engine = "sled"
+
+sled_cache_capacity = 134217728
+sled_flush_every_ms = 2000
+
+compression_level = 5
+
+[s3_api]
+api_bind_addr = "[::]:3900"
+s3_region = "garage"
+root_domain = ".s3.garage.local"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.local"
+

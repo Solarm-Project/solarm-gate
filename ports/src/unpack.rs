@@ -7,7 +7,7 @@ use std::{
 use bundle::SourceSection;
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{config::Config, derive_source_name, workspace::Workspace};
+use crate::{config::Config, derive_source_name, path::add_extension, workspace::Workspace};
 
 pub fn unpack_sources<P: AsRef<Path>>(
     wks: &Workspace,
@@ -19,11 +19,11 @@ pub fn unpack_sources<P: AsRef<Path>>(
     let build_dir = wks.get_or_create_build_dir()?;
     std::env::set_current_dir(&build_dir).into_diagnostic()?;
 
-    for source in sources {
+    for (source_idx, source) in sources.into_iter().enumerate() {
         let unpack_name = derive_source_name(package_name.clone(), &source);
         let unpack_path = build_dir.join(&unpack_name);
 
-        for src in &source.sources {
+        for (node_idx, src) in source.sources.clone().into_iter().enumerate() {
             match src {
                 bundle::SourceNode::Archive(archive) => {
                     let src_url: url::Url = archive.src.parse().into_diagnostic()?;
@@ -37,10 +37,20 @@ pub fn unpack_sources<P: AsRef<Path>>(
                     archive_unpack(&archive_path, &unpack_path, &package_name)?;
                 }
                 bundle::SourceNode::Git(git_src) => {
-                    let file_name = format!("{}.tar.gz", git_src.get_repo_prefix());
-                    let archive_path =
-                        Config::get_or_create_archives_dir()?.join(Path::new(&file_name));
-                    archive_unpack(&archive_path, &unpack_path, &package_name)?;
+                    let file_name = add_extension(git_src.get_repo_prefix(), "tar.gz");
+                    let archive_path = Config::get_or_create_archives_dir()?.join(&file_name);
+                    if node_idx == 0 && source_idx == 0 {
+                        archive_unpack(&archive_path, &unpack_path, &package_name)?;
+                    } else {
+                        if let Some(unpack_name) = git_src.directory {
+                            let unpack_path = build_dir.join(unpack_name);
+                            archive_unpack(&archive_path, &unpack_path, &package_name)?;
+                        } else {
+                            return Err(miette::miette!(
+                                "directory property is only optional in the first git source"
+                            ));
+                        }
+                    }
                 }
                 bundle::SourceNode::File(file) => {
                     let src_path = file.get_bundle_path(bundle_path);
@@ -86,12 +96,26 @@ pub fn unpack_sources<P: AsRef<Path>>(
                     }
                 }
                 bundle::SourceNode::Overlay(overlay) => {
+                    println!("Overlaying directory {}", unpack_path.display());
                     let src_path = overlay.get_bundle_path(bundle_path);
                     let final_path = unpack_path.clone();
                     let mut copy_opts = fs_extra::dir::CopyOptions::new();
                     copy_opts.overwrite = true;
                     copy_opts.content_only = true;
-                    fs_extra::copy_items(&[src_path], final_path, &copy_opts).into_diagnostic()?;
+                    fs_extra::dir::copy(&src_path, final_path, &copy_opts).into_diagnostic()?;
+                }
+                bundle::SourceNode::Directory(directory) => {
+                    println!(
+                        "Copying directory {} into build workspace",
+                        directory.get_name()
+                    );
+                    let src_path = directory.get_bundle_path(bundle_path);
+                    let final_path = build_dir.join(directory.get_target_path());
+                    println!("{} -> {}", src_path.display(), final_path.display());
+                    DirBuilder::new().create(&final_path).into_diagnostic()?;
+                    let mut copy_opts = fs_extra::dir::CopyOptions::new();
+                    copy_opts.content_only = true;
+                    fs_extra::dir::copy(&src_path, final_path, &copy_opts).into_diagnostic()?;
                 }
             }
         }
@@ -119,6 +143,7 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P, name: &str) -> R
         DirBuilder::new().create(tmp_dir_path).into_diagnostic()?;
     } else {
         std::fs::remove_dir_all(&tmp_dir_path).into_diagnostic()?;
+        DirBuilder::new().create(tmp_dir_path).into_diagnostic()?;
     }
 
     use compress_tools::*;
@@ -134,21 +159,25 @@ fn archive_unpack<P: AsRef<Path>>(local_file: P, final_path: P, name: &str) -> R
         .into_diagnostic()?
         .into_iter()
         .filter_map(|e| match e {
-            Ok(e) => Some(e.path()),
+            Ok(e) => Some((e.file_name().to_string_lossy().to_string(), e.path())),
             Err(_) => None,
         })
-        .collect::<Vec<PathBuf>>();
+        .collect::<Vec<(String, PathBuf)>>();
     let extracted_dir = extracted_dirs
         .first()
         .ok_or(miette::miette!("no directories extracted"))?;
 
     println!(
-        "extracted_dir={}; final_path={}",
-        extracted_dir.display(),
-        final_path.display()
+        "extracted_dir={}; final_name={}",
+        extracted_dir.0,
+        final_path
+            .file_name()
+            .ok_or(miette::miette!("No filename"))?
+            .to_string_lossy()
+            .to_string()
     );
 
-    std::fs::rename(&extracted_dir, final_path)
+    std::fs::rename(&extracted_dir.1, final_path)
         .into_diagnostic()
         .wrap_err("move extracted directories to build path")?;
 

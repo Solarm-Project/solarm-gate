@@ -1,0 +1,26 @@
+name "network/storage/garage"
+summary "An open-source distributed object storage service tailored for self-hosting"
+classification "System/Services"
+project-url "https://garagehq.deuxfleurs.fr/"
+license-file "LICENSE"
+license "AGPL-3.0-only"
+
+source {
+	git "https://git.deuxfleurs.fr/Deuxfleurs/garage.git" tag="v0.8.1"
+	patch "pnet_datalink.patch" drop-directories=1
+	file "garage.xml"
+	file "garage.ksh"
+	file "garage.toml"
+}
+
+build {
+	script "cargo_build_release.sh"
+	install src="output/garage" target="usr/bin/garage" name="garage_bin"
+	install src="garage.xml" target="lib/svc/manifest/network/storage/garage.xml" name="manifest"
+	install src="garage.ksh" target="lib/svc/method/garage.ksh" name="method_script"
+	install src="garage.toml" target="etc/garage/default.toml" name="garage_config"
+}
+
+dependency "database/sqlite-3"
+dependency "compress/zstd"
+dependency "library/c++/protobuf"

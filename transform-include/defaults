@@ -42,7 +42,7 @@
 <transform dir path=usr/share/lib$ -> default group sys>
 <transform dir path=usr/share/lib/java$ -> default group sys>
 <transform dir path=usr/share/lib/java/javadoc$ -> default group other>
-<transform dir -> drop>
+<transform dir path=lib.*|usr.* -> drop>
 #
 # Users added by our packages should be blocked from ftp access by default
 #

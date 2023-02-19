@@ -1,6 +1,19 @@
 name "solarm"
 version "0.5.11"
 branch "2023.0.0"
+publisher "solarm.org"
+
+transform include="actuators"
+transform include="docs"
+transform include="devel"
+transform include="locale"
+transform include="autopyc"
+//transform include="python"
+transform include="defaults"
+//transform include="libtool-drop"
+//transform include="archive-libraries-drop"
+//transform include="ignore-gcc-usr-lib"
+transform "<transform file dir link hardlink path=opt/solarm/share/info/dir -> drop>"
 
 package {
 	name "developer/gnu-binutils"
@@ -12,4 +25,6 @@ package {
 	version "10.3.0"	
 }
 
-
+package {
+	name "network/storage/garage"
+}

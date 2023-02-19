@@ -7,6 +7,7 @@ mod env;
 mod forge;
 mod install;
 mod ips;
+mod path;
 mod tarball;
 mod unpack;
 mod workspace;

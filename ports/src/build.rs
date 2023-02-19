@@ -131,15 +131,15 @@ fn build_using_scripts(
         println!("Target Path: {}", target_path.display());
         let src_full_path = unpack_path.join(&install_directive.src);
         println!("Source Path: {}", src_full_path.display());
-        if !target_path.exists() {
-            DirBuilder::new()
-                .recursive(true)
-                .create(&target_path)
-                .into_diagnostic()?;
-            println!("Creating target dir");
-        }
 
         if let Some(pattern) = &install_directive.pattern {
+            if !target_path.exists() {
+                DirBuilder::new()
+                    .recursive(true)
+                    .create(&target_path)
+                    .into_diagnostic()?;
+                println!("Creating target dir");
+            }
             let mut copy_options = fs_extra::file::CopyOptions::default();
             copy_options.overwrite = true;
             let files = file_matcher::FilesNamed::regex(pattern)
@@ -149,6 +149,13 @@ fn build_using_scripts(
             println!("Copying via rsync");
             copy_with_rsync(wks, &src_full_path, &target_path, files)?;
         } else if let Some(fmatch) = &install_directive.fmatch {
+            if !target_path.exists() {
+                DirBuilder::new()
+                    .recursive(true)
+                    .create(&target_path)
+                    .into_diagnostic()?;
+                println!("Creating target dir");
+            }
             let files = file_matcher::FilesNamed::wildmatch(fmatch)
                 .within(&src_full_path)
                 .find()
@@ -156,10 +163,35 @@ fn build_using_scripts(
             println!("Copying via rsync");
             copy_with_rsync(wks, &src_full_path, &target_path, files)?;
         } else {
-            let mut copy_options = fs_extra::dir::CopyOptions::default();
-            copy_options.overwrite = true;
-            copy_options.content_only = true;
-            fs_extra::dir::copy(src_full_path, target_path, &copy_options).into_diagnostic()?;
+            if src_full_path.is_file() {
+                if !target_path.exists() {
+                    DirBuilder::new()
+                        .recursive(true)
+                        .create(
+                            &target_path
+                                .parent()
+                                .ok_or(miette::miette!("path has no parent directory"))?,
+                        )
+                        .into_diagnostic()?;
+                    println!("Creating target dir");
+                }
+                let mut copy_options = fs_extra::file::CopyOptions::default();
+                copy_options.overwrite = true;
+                fs_extra::file::copy(src_full_path, target_path, &copy_options)
+                    .into_diagnostic()?;
+            } else {
+                if !target_path.exists() {
+                    DirBuilder::new()
+                        .recursive(true)
+                        .create(&target_path)
+                        .into_diagnostic()?;
+                    println!("Creating target dir");
+                }
+                let mut copy_options = fs_extra::dir::CopyOptions::default();
+                copy_options.overwrite = true;
+                copy_options.content_only = true;
+                fs_extra::dir::copy(src_full_path, target_path, &copy_options).into_diagnostic()?;
+            }
         }
         println!("Copy suceeded");
     }

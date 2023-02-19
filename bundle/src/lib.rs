@@ -413,6 +413,7 @@ impl SourceSection {
                 SourceNode::File(s) => s.to_node(),
                 SourceNode::Patch(s) => s.to_node(),
                 SourceNode::Overlay(s) => s.to_node(),
+                SourceNode::Directory(s) => s.to_node(),
             };
             let doc = source_node.ensure_children();
             doc.nodes_mut().push(src_node);
@@ -427,6 +428,7 @@ pub enum SourceNode {
     Archive(ArchiveSource),
     Git(GitSource),
     File(FileSource),
+    Directory(DirectorySource),
     Patch(PatchSource),
     Overlay(OverlaySource),
 }
@@ -461,6 +463,10 @@ pub struct GitSource {
     pub archive: Option<bool>,
     #[knuffel(property)]
     pub must_stay_as_repo: Option<bool>,
+
+    // Directory where to unpack sources into the first git source can ignore this on the second it is required
+    #[knuffel(property)]
+    pub directory: Option<String>,
 }
 
 impl GitSource {
@@ -534,6 +540,48 @@ impl FileSource {
 
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("file");
+        node.insert(0, self.bundle_path.to_string_lossy().to_string().as_str());
+        if let Some(target_path) = &self.target_path {
+            node.insert(1, target_path.to_string_lossy().to_string().as_str());
+        }
+        node
+    }
+}
+
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
+pub struct DirectorySource {
+    #[knuffel(argument)]
+    bundle_path: PathBuf,
+    #[knuffel(argument)]
+    target_path: Option<PathBuf>,
+}
+
+impl DirectorySource {
+    pub fn new<P: AsRef<Path>>(bundle_path: P, target_path: Option<P>) -> BundleResult<Self> {
+        Ok(Self {
+            bundle_path: bundle_path.as_ref().to_path_buf(),
+            target_path: target_path.as_ref().map(|p| p.as_ref().to_path_buf()),
+        })
+    }
+
+    pub fn get_bundle_path<P: AsRef<Path>>(&self, base_path: P) -> PathBuf {
+        base_path.as_ref().join(&self.bundle_path)
+    }
+
+    pub fn get_name(&self) -> String {
+        self.bundle_path.display().to_string()
+    }
+
+    pub fn get_target_path(&self) -> PathBuf {
+        if let Some(p) = &self.target_path {
+            p.clone()
+        } else {
+            self.bundle_path.clone()
+        }
+    }
+
+    pub fn to_node(&self) -> kdl::KdlNode {
+        let mut node = kdl::KdlNode::new("directory");
         node.insert(0, self.bundle_path.to_string_lossy().to_string().as_str());
         if let Some(target_path) = &self.target_path {
             node.insert(1, target_path.to_string_lossy().to_string().as_str());
