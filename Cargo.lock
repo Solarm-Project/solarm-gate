@@ -1918,9 +1918,8 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.138"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db6d7e329c562c5dfab7a46a2afabc8b987ab9a4834c9d1ca04dc54c1546cef8"
+version = "0.2.140"
+source = "git+https://github.com/Toasterson/libc.git#595c2aba82937ab954037c1ebe4baf5f88afe9b4"
 
 [[package]]
 name = "libz-sys"

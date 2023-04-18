@@ -1,0 +1,6 @@
+- building packages for braich
+- Aur and Imgapi forge
+	- S3 [Garage](https://git.deuxfleurs.fr/Deuxfleurs/garage) as Backend for files (do not put files bigger than 100KB in to the database)
+	- Sccache as OpenIndiana and solarm cache backend (shared)
+- Chocolatey Server (base on NuGet Simpleserver for the time being)
+	- Probably make an express based on on deno or similar with s3 as backend https://www.npmjs.com/package/express-chocolatey-server

@@ -1,7 +1,9 @@
 [workspace]
 members = ["bundle", "gate", "forge_api", "ports", "forge"]
+exclude = ["rust", "libc"]
 
 
 [patch.crates-io]
 compress-tools = { git = "https://github.com/Toasterson/compress-tools-rs" }
 file-matcher = { path = "file-matcher" }
+libc = { git = "https://github.com/Toasterson/libc.git" }

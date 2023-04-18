@@ -6,7 +6,7 @@
 - Generic mechanisms lead to undefined behaviour
 - Packaging instructions and metadata is not Source code and therefore not worthy of copyright protection
 ## Decisions
-- Each user ([Idendity](Idendity)) will be given a personal publisher starting with the Tilde (~) character and their username called home publisher
+- Each user ([Identity](Identity.md)) will be given a personal publisher starting with the Tilde (~) character and their username called home publisher
 - The Personal publisher is only accessible for that user and nobody else. Definitions can be shared however
 - Public packages must be under a non home publisher.
 - All public publishers can be overtaken with a to be defined process (for now Instance admin intervation)
