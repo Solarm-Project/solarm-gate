@@ -84,7 +84,7 @@ package {
 	prefix "/opt/solarm/sysroot/usr"
 
 	configure {
-		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" name="CC"
+		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
 		flag "--sysroot=/opt/solarm/sysroot"
 		option "host=aarch64-unknown-solaris2.11"
 		option "without-zlib" //TODO Check why we did not build with zlib
@@ -107,7 +107,7 @@ package {
 	configure {
 		option "host=aarch64-unknown-solaris2.11"
 		option "with-sysroot=/opt/solarm/sysroot"
-		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" name="CC"
+		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
 	}
 }
 
@@ -121,7 +121,8 @@ package {
 		option "libdir=/opt/solarm/sysroot/usr/lib/mps"
 		option "bindir=/opt/solarm/sysroot/usr/bin"
 		option "includedir=/opt/solarm/sysroot/usr/include/mps"
-		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc --sysroot=/opt/solarm/sysroot" name="CC"
+		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
+		flag "--sysroot=/opt/solarm/sysroot"
 	}
 }
 
@@ -140,6 +141,7 @@ package {
 	configure {
 		option "build=i386-pc-solaris2.11"
 		option "host=aarch64-unknown-solaris2.11"
-		flag "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc --sysroot=/opt/solarm/sysroot" name="CC"
+		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" 
+		flag "--sysroot=/opt/solarm/sysroot"
 	}
 }

@@ -4,7 +4,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{config::Config, derive_source_name, workspace::Workspace};
+use crate::{config::Settings, derive_source_name, workspace::Workspace};
 use bundle::{Bundle, SourceNode};
 use fs_extra::file::write_all;
 use gate::Gate;
@@ -292,7 +292,7 @@ pub fn run_lint(wks: &Workspace, pkg: &Bundle) -> Result<()> {
 }
 
 pub fn ensure_repo_with_publisher_exists(publisher: &str) -> Result<()> {
-    let repo_base = Config::get_or_create_repo_dir()?;
+    let repo_base = Settings::get_or_create_repo_dir()?;
 
     if !repo_base.join("pkg5.repository").exists() {
         let pkg_repo_status = Command::new("pkgrepo")
@@ -335,7 +335,7 @@ pub fn publish_package(wks: &Workspace, pkg: &Bundle, publisher: &str) -> Result
         &pkg.package_document.sources[0],
     );
     let unpack_path = build_dir.join(&unpack_name);
-    let repo_path = Config::get_or_create_repo_dir()?;
+    let repo_path = Settings::get_or_create_repo_dir()?;
     let manifest = wks.get_or_create_manifest_dir()?.join("generated.dep.res");
     let pkgsend_status = Command::new("pkgsend")
         .arg("publish")

@@ -3,7 +3,6 @@ mod commands;
 mod compile;
 mod config;
 mod download;
-mod env;
 mod forge;
 mod install;
 mod ips;
@@ -12,10 +11,10 @@ mod tarball;
 mod unpack;
 mod workspace;
 
+use crate::config::Settings;
 use bundle::{Bundle, SourceSection};
 use clap::{Parser, Subcommand, ValueEnum};
 use commands::{handle_command, workspace::handle_workspace, ShellCommands};
-use config::Config;
 use gate::Gate;
 use miette::{IntoDiagnostic, Result, WrapErr};
 use rustyline::error::ReadlineError;
@@ -42,11 +41,23 @@ struct Cli {
 //TODO: verify command to verify the bundle for common problems.
 
 #[derive(Debug, Subcommand)]
+enum ConfigCommand {
+    Add { name: String, value: String },
+    Remove { name: String, value: String },
+    Set { name: String, value: String },
+    Get { name: String },
+}
+
+#[derive(Debug, Subcommand)]
 enum Command {
     Create {
         #[arg(long, short)]
         package: Option<PathBuf>,
         name: String,
+    },
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommand,
     },
     Edit {
         #[arg(long, short)]
@@ -124,7 +135,7 @@ pub fn derive_source_name(package_name: String, src: &SourceSection) -> String {
 
 fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
-    let conf = Config::open()?;
+    let settings = Settings::open()?;
 
     match cli.command {
         Command::Workspace { cmd } => match cmd {
@@ -202,7 +213,7 @@ fn main() -> Result<()> {
                 let mut args = vec!["ports"];
                 let mut argn = unmatched.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
                 args.append(&mut argn);
-                let wks = conf.get_current_wks()?;
+                let wks = settings.get_current_wks()?;
                 let cmd: ShellCommands = ShellCommands::parse_from(args);
                 match handle_command(&cmd, &wks, &mut package_bundle) {
                     Ok(_) => return Ok(()),
@@ -214,7 +225,7 @@ fn main() -> Result<()> {
 
             let ps1 = format!("{}$ ", basename);
             let mut rl = rustyline::Editor::<()>::new().into_diagnostic()?;
-            let wks = Box::new(conf.get_current_wks()?);
+            let wks = Box::new(settings.get_current_wks()?);
             loop {
                 let readline = rl.readline(&ps1);
                 match readline {
@@ -264,9 +275,9 @@ fn main() -> Result<()> {
             transform_include_dir,
         } => {
             let wks = if let Some(wks_path) = cli.workspace {
-                conf.get_workspace_from(&wks_path)?
+                settings.get_workspace_from(&wks_path)?
             } else {
-                conf.get_current_wks()?
+                settings.get_current_wks()?
             };
 
             let transform_include_dir = transform_include_dir.map(|p| match p.canonicalize() {
@@ -379,7 +390,7 @@ fn main() -> Result<()> {
                 }
             }
 
-            build::build_package_sources(&wks, &package_bundle)
+            build::build_package_sources(&wks, &package_bundle, &settings)
                 .wrap_err("configure step failed")?;
 
             if let Some(stop_on_step) = &stop_on_step {
@@ -429,6 +440,49 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::Forge { cmd } => forge::handle_forge(&cmd),
+        Command::Config { command } => {
+            let mut cfg = Settings::open()?;
+            match command {
+                ConfigCommand::Set { name, .. } => {
+                    match name.as_str() {
+                        "test" => {
+                            println!("just testing code, nothing will happen here");
+                        }
+                        x => {
+                            return Err(miette::miette!(format!(
+                                "no setting named {} is changeable like this",
+                                x
+                            )));
+                        }
+                    };
+                }
+                ConfigCommand::Get { name } => match name.as_str() {
+                    "output" => println!("output_dir={}", cfg.get_output_dir()),
+                    _ => {
+                        return Err(miette::miette!("unknown value cannot get from config"));
+                    }
+                },
+                ConfigCommand::Add { name, value } => match name.as_str() {
+                    "search_path" => {
+                        cfg.add_path_to_search(value);
+                    }
+                    _ => {
+                        return Err(miette::miette!("cannot set this config from here"));
+                    }
+                },
+                ConfigCommand::Remove { name, value } => match name.as_str() {
+                    "search_path" => {
+                        cfg.remove_path_from_search(value);
+                    }
+                    _ => {
+                        return Err(miette::miette!("cannot set this config from here"));
+                    }
+                },
+            };
+
+            cfg.save()?;
+            Ok(())
+        }
     }
 }
 

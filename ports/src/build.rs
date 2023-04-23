@@ -9,15 +9,15 @@ use std::{
 use bundle::{Bundle, ConfigureBuildSection, ScriptBuildSection};
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{derive_source_name, workspace::Workspace};
+use crate::{config::Settings, derive_source_name, workspace::Workspace};
 
-pub fn build_package_sources(wks: &Workspace, pkg: &Bundle) -> Result<()> {
+pub fn build_package_sources(wks: &Workspace, pkg: &Bundle, settings: &Settings) -> Result<()> {
     match pkg.package_document.ensure_build_section() {
-        bundle::BuildSection::Configure(c) => build_using_automake(wks, pkg, &c),
+        bundle::BuildSection::Configure(c) => build_using_automake(wks, pkg, &c, settings),
         bundle::BuildSection::CMake => todo!(),
         bundle::BuildSection::Meson => todo!(),
         bundle::BuildSection::Build(s) => {
-            build_using_scripts(wks, pkg, &s)?;
+            build_using_scripts(wks, pkg, &s, settings)?;
 
             Ok(())
         }
@@ -31,6 +31,7 @@ fn build_using_scripts(
     wks: &Workspace,
     pkg: &Bundle,
     build_section: &ScriptBuildSection,
+    settings: &Settings,
 ) -> Result<()> {
     let build_dir = wks.get_or_create_build_dir()?;
     let unpack_name = derive_source_name(
@@ -50,6 +51,7 @@ fn build_using_scripts(
                     .into_os_string(),
             )
             .env("UNPACK_DIR", &unpack_path.clone().into_os_string())
+            .env("PATH", settings.get_search_path().join(":"))
             .status()
             .into_diagnostic()?;
 
@@ -259,9 +261,8 @@ fn build_using_automake(
     wks: &Workspace,
     pkg: &Bundle,
     build_section: &ConfigureBuildSection,
+    settings: &Settings,
 ) -> Result<()> {
-    let dotenv_env: Vec<(String, String)> =
-        crate::env::get_environment(pkg.get_path().parent().unwrap())?;
     let build_dir = wks.get_or_create_build_dir()?;
     let unpack_name = derive_source_name(
         pkg.package_document.name.clone(),
@@ -318,10 +319,7 @@ fn build_using_automake(
         option_vec.push(format!("--prefix={}", prefix));
     }
 
-    for (env_key, env_var) in dotenv_env {
-        env_flags.insert(env_key, env_var);
-    }
-
+    env_flags.insert("PATH".into(), settings.get_search_path().join(":"));
     let proto_dir_path = wks.get_or_create_prototype_dir()?;
     let proto_dir_str = proto_dir_path.to_string_lossy().to_string();
 
@@ -364,9 +362,9 @@ fn build_using_automake(
         )));
     }
 
-    crate::compile::run_compile(wks, pkg).wrap_err("compilation step failed")?;
+    crate::compile::run_compile(wks, pkg, settings).wrap_err("compilation step failed")?;
 
-    crate::install::run_install(wks, pkg).wrap_err("installation step failed")
+    crate::install::run_install(wks, pkg, settings).wrap_err("installation step failed")
 }
 
 #[inline(never)]

@@ -14,7 +14,7 @@ fn derive_output_name(pkg: &Bundle) -> String {
 
 pub fn make_release_tarball(wks: &Workspace, pkg: &Bundle) -> miette::Result<()> {
     let proto_dir = wks.get_or_create_prototype_dir()?;
-    let output_dir = crate::config::Config::get_or_create_output_dir()?;
+    let output_dir = crate::config::Settings::get_or_create_output_dir()?;
     let tarball_path_string = output_dir
         .join(derive_output_name(pkg))
         .to_string_lossy()

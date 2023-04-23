@@ -3,7 +3,7 @@ use std::{collections::HashMap, process::Stdio};
 use bundle::Bundle;
 use miette::{IntoDiagnostic, Result};
 
-use crate::{derive_source_name, workspace::Workspace};
+use crate::{config::Settings, derive_source_name, workspace::Workspace};
 use std::process::Command;
 
 enum BuildTool {
@@ -21,9 +21,7 @@ impl ToString for BuildTool {
 }
 
 //TODO: custom install section
-pub fn run_install(wks: &Workspace, pkg: &Bundle) -> Result<()> {
-    let dotenv_env: Vec<(String, String)> =
-        crate::env::get_environment(pkg.get_path().parent().unwrap())?;
+pub fn run_install(wks: &Workspace, pkg: &Bundle, settings: &Settings) -> Result<()> {
     let build_dir = wks.get_or_create_build_dir()?;
     let unpack_name = derive_source_name(
         pkg.package_document.name.clone(),
@@ -52,9 +50,7 @@ pub fn run_install(wks: &Workspace, pkg: &Bundle) -> Result<()> {
     };
 
     let mut env_flags: HashMap<String, String> = HashMap::new();
-    for (env_key, env_val) in dotenv_env {
-        env_flags.insert(env_key, env_val);
-    }
+    env_flags.insert("PATH".into(), settings.get_search_path().join(":"));
 
     let proto_dir_path = wks.get_or_create_prototype_dir()?;
     let proto_dir_str = proto_dir_path.to_string_lossy().to_string();

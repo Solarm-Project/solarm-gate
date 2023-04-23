@@ -31,12 +31,12 @@ pub fn handle_forge(cmd: &ForgeCLI) -> Result<()> {
         ForgeCLI::Login => {
             dotenv::dotenv().into_diagnostic()?;
             let token = get_device_token()?;
-            let mut config = crate::config::Config::open()?;
+            let mut config = crate::config::Settings::open()?;
             config.github_token = Some(token);
-            config.save()
+            config.save().into_diagnostic()
         }
         ForgeCLI::Username => {
-            let config = crate::config::Config::open()?;
+            let config = crate::config::Settings::open()?;
 
             if let Some(github_token) = config.github_token {
                 let request_body =

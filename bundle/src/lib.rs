@@ -330,6 +330,16 @@ impl Package {
                                 .into_iter()
                                 .chain(other_configure.flags.clone())
                                 .collect(),
+                            compiler: if let Some(compiler) = &other_configure.compiler {
+                                Some(compiler.clone())
+                            } else {
+                                c.compiler
+                            },
+                            linker: if let Some(linker) = &other_configure.linker {
+                                Some(linker.clone())
+                            } else {
+                                c.linker
+                            },
                         }))
                     }
                     BuildSection::NoBuild => Ok(BuildSection::Configure(other_configure.clone())),
@@ -676,6 +686,10 @@ pub struct ConfigureBuildSection {
     pub options: Vec<BuildOptionNode>,
     #[knuffel(children(name = "flag"))]
     pub flags: Vec<BuildFlagNode>,
+    #[knuffel(child, unwrap(argument))]
+    pub compiler: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub linker: Option<String>,
 }
 
 #[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
@@ -774,6 +788,18 @@ impl BuildSection {
 
                 for flag in &c.flags {
                     doc.nodes_mut().push(flag.to_node());
+                }
+
+                if let Some(compiler) = &c.compiler {
+                    let mut n = kdl::KdlNode::new("compiler");
+                    n.insert(0, compiler.clone());
+                    doc.nodes_mut().push(n);
+                }
+
+                if let Some(linker) = &c.linker {
+                    let mut n = kdl::KdlNode::new("linker");
+                    n.insert(0, linker.clone());
+                    doc.nodes_mut().push(n);
                 }
 
                 node

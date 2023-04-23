@@ -7,7 +7,7 @@ use std::{
 use bundle::SourceSection;
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{config::Config, derive_source_name, path::add_extension, workspace::Workspace};
+use crate::{config::Settings, derive_source_name, path::add_extension, workspace::Workspace};
 
 pub fn unpack_sources<P: AsRef<Path>>(
     wks: &Workspace,
@@ -32,13 +32,13 @@ pub fn unpack_sources<P: AsRef<Path>>(
 
                     let file_name = local_file.file_name().ok_or(miette::miette!("Archive must have a file_name. A Folder with / at the end can not be an archive"))?;
                     let archive_path =
-                        Config::get_or_create_archives_dir()?.join(Path::new(file_name));
+                        Settings::get_or_create_archives_dir()?.join(Path::new(file_name));
 
                     archive_unpack(&archive_path, &unpack_path, &package_name)?;
                 }
                 bundle::SourceNode::Git(git_src) => {
                     let file_name = add_extension(git_src.get_repo_prefix(), "tar.gz");
-                    let archive_path = Config::get_or_create_archives_dir()?.join(&file_name);
+                    let archive_path = Settings::get_or_create_archives_dir()?.join(&file_name);
                     if node_idx == 0 && source_idx == 0 {
                         archive_unpack(&archive_path, &unpack_path, &package_name)?;
                     } else {

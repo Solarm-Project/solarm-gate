@@ -1,7 +1,7 @@
 use std::{fs, path::Path, process::Command};
 
 use crate::{
-    config::Config,
+    config::Settings,
     path::add_extension,
     workspace::{DownloadFile, Workspace},
 };
@@ -28,7 +28,7 @@ pub(crate) fn download_and_verify(
 
                     let file_name = local_file.file_name().ok_or(miette::miette!("Archive must have a file_name. A Folder with / at the end can not be an archive"))?;
                     let archive_path =
-                        Config::get_or_create_archives_dir()?.join(Path::new(file_name));
+                        Settings::get_or_create_archives_dir()?.join(Path::new(file_name));
 
                     if archive_clean {
                         std::fs::remove_file(&archive_path).ok();
@@ -65,7 +65,7 @@ pub(crate) fn download_and_verify(
                     let git_prefix = &git.get_repo_prefix();
                     let git_repo_path = &wks.get_or_create_download_dir()?.join(&git_prefix);
                     let archive_path = add_extension(
-                        Config::get_or_create_archives_dir()?.join(&git_prefix),
+                        Settings::get_or_create_archives_dir()?.join(&git_prefix),
                         "tar.gz",
                     );
 
@@ -142,7 +142,7 @@ fn make_git_archive_with_tar(wks: &Workspace, git: &bundle::GitSource) -> Result
     archive_cmd.current_dir(&wks.get_or_create_download_dir()?);
     archive_cmd.arg("-czf");
     let archive_name_arg = add_extension(
-        Config::get_or_create_archives_dir()?.join(&repo_prefix),
+        Settings::get_or_create_archives_dir()?.join(&repo_prefix),
         "tar.gz",
     )
     .to_string_lossy()
@@ -176,7 +176,7 @@ fn make_git_archive(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
     let output_arg = format!(
         "--output={}",
         add_extension(
-            Config::get_or_create_archives_dir()?.join(&repo_prefix),
+            Settings::get_or_create_archives_dir()?.join(&repo_prefix),
             "tar.gz"
         )
         .to_string_lossy()
@@ -206,7 +206,7 @@ fn git_archive_get(wks: &Workspace, git: &bundle::GitSource) -> Result<()> {
     let output_arg = format!(
         "--output={}",
         add_extension(
-            Config::get_or_create_archives_dir()?.join(&repo_prefix),
+            Settings::get_or_create_archives_dir()?.join(&repo_prefix),
             "tar.gz"
         )
         .to_string_lossy()
