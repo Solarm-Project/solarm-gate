@@ -13,17 +13,26 @@ pub enum Error {
     SemVerError(#[from] semver::Error),
 }
 
+#[derive(Debug, Default, PartialEq, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum SupportedArchitectures {
+    #[default]
+    AMD64,
+    ARM64,
+    SPARC64,
+}
+
 #[derive(Debug, Serialize, Builder, PartialEq)]
 #[builder(setter(into, strip_option), build_fn(error = "self::Error"))]
 pub struct Metadata {
     #[builder(default)]
     pub maintainers: Vec<String>,
     pub summary: String,
-    pub component_name: String,
-    pub fmri: String,
     pub source_name: String,
+    pub fmri: String,
+    pub project_name: String,
     #[builder(default)]
-    pub arch: String,
+    pub arch: SupportedArchitectures,
     pub homepages: Vec<String>,
     #[builder(default)]
     pub licenses: Vec<String>,
@@ -42,9 +51,9 @@ mod tests {
     fn build_sample() -> Result<Metadata> {
         MetadataBuilder::default()
             .summary("ansible - Radically simple IT automation")
-            .component_name("ansible")
+            .source_name("python/ansible")
             .fmri("library/python/ansible@7.4.0,5.11-2023.0.0.1:20230421T131743Z")
-            .source_name("ansible")
+            .project_name("ansible")
             .homepages([String::from("https://ansible.com/")])
             .licenses([String::from("GPL-3.0-only")])
             .version(Version::parse("7.4.0")?)
@@ -55,19 +64,21 @@ mod tests {
 
     #[test]
     fn it_works() -> Result<()> {
-        let expected = build_sample()?;
-        assert_eq!("7.4.0", expected.version.to_string().as_str());
+        let actual = build_sample()?;
+        assert_eq!("7.4.0", actual.version.to_string().as_str());
         assert_eq!(
             "ansible - Radically simple IT automation",
-            expected.summary.as_str()
+            actual.summary.as_str()
         );
+        assert_eq!("python/ansible", actual.source_name.as_str());
         Ok(())
     }
 
     #[test]
     fn serialize_test() -> miette::Result<()> {
         let sample = build_sample()?;
-        let actual = serde_json::to_string_pretty(&sample).into_diagnostic()?;
+        let actual = serde_json::to_string(&sample).into_diagnostic()?;
+        println!("{}", &actual);
         assert_contents("ansible_repology_data.json", &actual);
         Ok(())
     }
