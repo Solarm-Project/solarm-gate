@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn serialize_test() -> miette::Result<()> {
         let sample = build_sample()?;
-        let actual = serde_json::to_string(&sample).into_diagnostic()?;
+        let actual = serde_json::to_string_pretty(&sample).into_diagnostic()?;
         println!("{}", &actual);
         assert_contents("ansible_repology_data.json", &actual);
         Ok(())
