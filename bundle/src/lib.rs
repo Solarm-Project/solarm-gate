@@ -1,3 +1,4 @@
+use derive_builder::Builder;
 use miette::{Diagnostic, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -23,6 +24,8 @@ pub enum BundleError {
     UnknownBuildType(String),
     #[error("build types {0} and {1} are not mergeable")]
     NonMergableBuildSections(String, String),
+    #[error(transparent)]
+    UninitializedFieldError(#[from] derive_builder::UninitializedFieldError),
 }
 
 type BundleResult<T> = std::result::Result<T, BundleError>;
@@ -118,43 +121,8 @@ impl Bundle {
     }
 }
 
-pub struct PackageBuilder(Package);
-
-impl PackageBuilder {
-    pub fn new() -> Self {
-        PackageBuilder(Package {
-            name: String::new(),
-            classification: None,
-            summary: None,
-            license_file: None,
-            license: None,
-            prefix: None,
-            version: None,
-            revision: None,
-            project_url: None,
-            sources: vec![],
-            build: vec![],
-            dependencies: vec![],
-            seperate_build_dir: false,
-        })
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.0.name = name;
-        self
-    }
-
-    pub fn classification(mut self, classification: String) -> Self {
-        self.0.classification = Some(classification);
-        self
-    }
-
-    pub fn finish(self) -> Package {
-        self.0
-    }
-}
-
-#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize, Builder)]
+#[builder(setter(into, strip_option), build_fn(error = "self::BundleError"))]
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
@@ -176,12 +144,14 @@ pub struct Package {
     pub project_url: Option<String>,
     #[knuffel(child)]
     pub seperate_build_dir: bool,
+    #[knuffel(child, unwrap(argument))]
+    pub maintainer: Option<String>,
     #[knuffel(children(name = "source"))]
     pub sources: Vec<SourceSection>,
     #[knuffel(children(name = "dependency"))]
     pub dependencies: Vec<Dependency>,
-    #[knuffel(children)]
-    build: Vec<BuildSection>,
+    #[knuffel(children(name = "build"))]
+    build_section: Vec<BuildSection>,
 }
 
 impl Package {
@@ -194,11 +164,11 @@ impl Package {
     }
 
     pub fn get_build_section(&self) -> Option<BuildSection> {
-        self.build.first().map(|b| b.clone())
+        self.build_section.first().map(|b| b.clone())
     }
 
     pub fn ensure_build_section(&self) -> BuildSection {
-        self.build
+        self.build_section
             .first()
             .map(|b| b.clone())
             .unwrap_or(BuildSection::default())
@@ -259,6 +229,12 @@ impl Package {
             doc.nodes_mut().push(project_url_node);
         }
 
+        if let Some(maintainer) = &self.maintainer {
+            let mut maintainer_node = kdl::KdlNode::new("maintainer");
+            maintainer_node.insert(0, maintainer.as_str());
+            doc.nodes_mut().push(maintainer_node);
+        }
+
         if self.sources.len() > 0 {
             for src in &self.sources {
                 let source_node = src.to_node();
@@ -312,6 +288,10 @@ impl Package {
 
         if let Some(project_url) = &other.project_url {
             self.project_url = Some(project_url.clone());
+        }
+
+        if let Some(maintainer) = &other.maintainer {
+            self.maintainer = Some(maintainer.clone());
         }
 
         if let Some(build_section) = &other.get_build_section() {
@@ -372,7 +352,7 @@ impl Package {
                 BuildSection::NoBuild => Ok(BuildSection::NoBuild),
             }?;
 
-            self.build = vec![final_build];
+            self.build_section = vec![final_build];
         }
 
         for src in &other.sources {

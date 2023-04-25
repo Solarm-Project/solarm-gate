@@ -91,6 +91,13 @@ enum Command {
         #[command(subcommand)]
         cmd: forge::ForgeCLI,
     },
+    /// Show the repository information
+    Info {
+        /// If set will save the information in the directory of the package.kdl file as json
+        /// mainly used to generate repology data
+        #[arg(long)]
+        save: bool,
+    },
 }
 
 #[derive(Debug, ValueEnum, Clone)]
@@ -178,10 +185,12 @@ fn main() -> Result<()> {
                 ))?;
             }
 
-            let mut doc = kdl::KdlDocument::new();
-            let mut name_node = kdl::KdlNode::new("name");
-            name_node.insert(0, name.as_str());
-            doc.nodes_mut().push(name_node);
+            let pkg = bundle::PackageBuilder::default()
+                .name(name)
+                .build()
+                .into_diagnostic()?;
+
+            let doc = pkg.to_document();
             let mut pkg_file = std::fs::File::create(path.join("package.kdl")).into_diagnostic()?;
             pkg_file
                 .write_all(doc.to_string().as_bytes())
@@ -483,6 +492,7 @@ fn main() -> Result<()> {
             cfg.save()?;
             Ok(())
         }
+        Command::Info { save } => todo!(),
     }
 }
 

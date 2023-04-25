@@ -1,4 +1,5 @@
 pub mod add;
+pub mod set;
 pub mod workspace;
 
 use bundle::Bundle;
@@ -7,13 +8,17 @@ use miette::Result;
 
 use crate::workspace::Workspace;
 
-use self::add::handle_add;
+use self::{add::handle_add, set::handle_set};
 
 #[derive(Debug, Parser)]
 pub enum ShellCommands {
     Add {
         #[command(subcommand)]
         section: add::Sections,
+    },
+    Set {
+        #[command(subcommand)]
+        section: set::Sections,
     },
     Exit,
 }
@@ -26,13 +31,17 @@ pub enum CommandReturn {
 pub fn handle_command(
     args: &ShellCommands,
     wks: &Workspace,
-    doc: &mut Bundle,
+    pkg: &mut Bundle,
 ) -> Result<CommandReturn> {
     match args {
         ShellCommands::Add { section } => {
-            handle_add(wks, &section, doc)?;
+            handle_add(wks, &section, pkg)?;
             Ok(CommandReturn::Continue)
         }
         ShellCommands::Exit => Ok(CommandReturn::Exit),
+        ShellCommands::Set { section } => {
+            handle_set(wks, &section, pkg)?;
+            Ok(CommandReturn::Continue)
+        }
     }
 }

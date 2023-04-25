@@ -32,3 +32,5 @@ file-matcher = { version = "0.7.0", features = ["regex", "copier", "serde"] }
 shellexpand = "3.0.0"
 lazy_static = "1.4.0"
 config = "0.13.3"
+repology = { version = "0.1.0", path = "../repology" }
+

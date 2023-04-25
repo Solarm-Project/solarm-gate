@@ -1,5 +1,5 @@
 [workspace]
-members = ["bundle", "gate", "forge_api", "ports", "forge"]
+members = ["bundle", "gate","repology", "forge_api", "ports", "forge"]
 exclude = ["rust", "libc"]
 
 
