@@ -52,7 +52,7 @@ impl Workspace {
         ))
     }
 
-    pub fn open_local_file(&self, url: url::Url) -> Result<DownloadFile> {
+    pub fn open_local_file(&self, url: url::Url, hasher_kind: HasherKind) -> Result<DownloadFile> {
         let download_dir = self.get_or_create_download_dir()?;
         DownloadFile::new(
             download_dir.join(
@@ -60,6 +60,7 @@ impl Workspace {
                     .file_name()
                     .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
             ),
+            hasher_kind,
         )
     }
 
@@ -93,50 +94,72 @@ impl Workspace {
     }
 }
 
-pub struct DownloadFile(PathBuf, std::fs::File, sha2::Sha512, Option<String>);
+#[allow(dead_code)]
+pub enum HasherKind {
+    Sha256,
+    Sha512,
+}
+
+pub struct DownloadFile {
+    path: PathBuf,
+    handle: std::fs::File,
+    hasher512: sha2::Sha512,
+    hasher256: sha2::Sha256,
+    hasher_kind: HasherKind,
+    error: Option<String>,
+}
 
 impl DownloadFile {
-    fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
-        Ok(DownloadFile(
-            path.as_ref().clone().to_path_buf(),
-            std::fs::File::options()
+    fn new<P: AsRef<Path>>(path: P, kind: HasherKind) -> Result<Self> {
+        Ok(DownloadFile {
+            path: path.as_ref().clone().to_path_buf(),
+            handle: std::fs::File::options()
                 .read(true)
                 .write(true)
                 .create_new(true)
                 .open(path)?,
-            sha2::Sha512::new(),
-            None,
-        ))
+            hasher_kind: kind,
+            hasher512: sha2::Sha512::new(),
+            hasher256: sha2::Sha256::new(),
+            error: None,
+        })
     }
 
     pub fn get_hash(&mut self) -> String {
-        format!("{:x}", self.2.clone().finalize())
+        match self.hasher_kind {
+            HasherKind::Sha256 => format!("{:x}", self.hasher256.clone().finalize()),
+            HasherKind::Sha512 => format!("{:x}", self.hasher512.clone().finalize()),
+        }
     }
 
     pub fn get_path(&self) -> PathBuf {
-        self.0.clone().to_path_buf()
+        self.path.clone().to_path_buf()
     }
 
     #[allow(dead_code)]
     pub fn exists(&self) -> bool {
-        self.0.exists()
+        self.path.exists()
     }
 }
 
 impl Handler for DownloadFile {
     fn write(&mut self, data: &[u8]) -> std::result::Result<usize, WriteError> {
-        let len = match self.1.write(data) {
+        let len = match self.handle.write(data) {
             Ok(l) => l,
             Err(e) => {
-                self.3 = Some(format!(
+                self.error = Some(format!(
                     "error while downloading {} inside handler: {}",
-                    self.0.display(),
+                    self.path.display(),
                     e
                 ));
                 return Err(WriteError::Pause);
             }
         };
-        self.2.update(data);
+        match self.hasher_kind {
+            HasherKind::Sha256 => self.hasher256.update(data),
+            HasherKind::Sha512 => self.hasher512.update(data),
+        }
+
         Ok(len)
     }
 }

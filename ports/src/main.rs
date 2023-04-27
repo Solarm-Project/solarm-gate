@@ -97,6 +97,11 @@ enum Command {
         /// mainly used to generate repology data
         #[arg(long)]
         save: bool,
+
+        #[arg(long, short)]
+        gate: Option<PathBuf>,
+
+        package: Option<String>,
     },
 }
 
@@ -492,7 +497,101 @@ fn main() -> Result<()> {
             cfg.save()?;
             Ok(())
         }
-        Command::Info { save } => todo!(),
+        Command::Info {
+            save,
+            package,
+            gate,
+        } => {
+            let path = if let Some(package) = package {
+                Path::new(package.as_str()).to_path_buf()
+            } else {
+                Path::new("./").to_path_buf()
+            };
+
+            let gate = if let Some(gate_file) = &gate {
+                Gate::new(gate_file)?
+            } else {
+                Gate::default()
+            };
+
+            let pkg = Bundle::open_local(path)?;
+
+            let mut builder = repology::MetadataBuilder::default();
+
+            if let Some(summary) = &pkg.package_document.summary {
+                builder.summary(summary);
+            }
+
+            builder.maintainers(pkg.package_document.maintainers.clone());
+
+            builder.project_name(&pkg.package_document.project_name.clone());
+
+            builder.source_name(&pkg.get_name());
+
+            if let Some(hp) = &pkg.package_document.project_url {
+                builder.add_homepage(hp);
+            }
+
+            if let Some(license) = &pkg.package_document.license {
+                builder.add_license(license);
+            }
+
+            builder.source_links(
+                pkg.package_document
+                    .sources
+                    .iter()
+                    .map(|s| -> Vec<String> {
+                        s.sources
+                            .iter()
+                            .filter_map(|s| -> Option<String> {
+                                match s {
+                                    bundle::SourceNode::Archive(s) => Some(s.src.clone()),
+                                    bundle::SourceNode::Git(g) => Some(g.repository.clone()),
+                                    bundle::SourceNode::File(_) => None,
+                                    bundle::SourceNode::Directory(_) => None,
+                                    bundle::SourceNode::Patch(_) => None,
+                                    bundle::SourceNode::Overlay(_) => None,
+                                }
+                            })
+                            .collect()
+                    })
+                    .flatten()
+                    .collect::<Vec<String>>()
+                    .clone(),
+            );
+
+            if let Some(cat) = &pkg.package_document.classification {
+                builder.add_category(cat);
+            }
+
+            if let Some(vers) = &pkg.package_document.version {
+                builder.version(semver::Version::parse(vers).into_diagnostic()?);
+            }
+
+            builder.fmri(format!(
+                "pkg:/{name}@{version},{build_version}-{branch_version}.{revision}",
+                name = &pkg.package_document.name,
+                version = &pkg
+                    .package_document
+                    .version
+                    .ok_or(miette::miette!("no version field spcified in package.kdl"))?,
+                build_version = gate.version,
+                branch_version = gate.branch,
+                revision = &pkg.package_document.revision.unwrap_or(String::from("0")),
+            ));
+
+            let data = builder.build().into_diagnostic()?;
+
+            let data_string = serde_json::to_string_pretty(&data).into_diagnostic()?;
+
+            if save {
+                todo!();
+            }
+
+            println!("{}\n", &data_string);
+
+            Ok(())
+        }
     }
 }
 

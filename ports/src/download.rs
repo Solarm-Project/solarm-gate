@@ -3,7 +3,7 @@ use std::{fs, path::Path, process::Command};
 use crate::{
     config::Settings,
     path::add_extension,
-    workspace::{DownloadFile, Workspace},
+    workspace::{DownloadFile, HasherKind, Workspace},
 };
 use bundle::SourceSection;
 use curl::easy::Easy2;
@@ -36,26 +36,29 @@ pub(crate) fn download_and_verify(
 
                     if !archive_path.exists() {
                         println!("Downloading {}", url.to_string());
-                        let mut easy = Easy2::new(wks.open_local_file(url.clone())?);
+                        let mut easy =
+                            Easy2::new(wks.open_local_file(url.clone(), HasherKind::Sha512)?);
                         easy.get(true).into_diagnostic()?;
                         easy.url(&url.to_string()).into_diagnostic()?;
                         easy.progress(true).into_diagnostic()?;
                         easy.perform().into_diagnostic()?;
                         let local_file = { easy.get_mut() as &mut DownloadFile };
                         let downloaded_file_hash = local_file.get_hash();
-                        if downloaded_file_hash == archive.sha512 {
-                            println!("Success, checksums match");
-                            let local_path = local_file.get_path();
-                            drop(local_file);
-                            fs::copy(&local_path, archive_path).into_diagnostic()?;
-                            fs::remove_file(&local_path).into_diagnostic()?;
-                        } else {
-                            return Err(miette::miette!(format!(
-                                "checksum missmatch for archive {}, expected: {}, actual {}",
-                                url.to_string(),
-                                archive.sha512,
-                                downloaded_file_hash
-                            )));
+                        if let Some(sha512) = &archive.sha512 {
+                            if downloaded_file_hash == *sha512 {
+                                println!("Success, checksums match");
+                                let local_path = local_file.get_path();
+                                drop(local_file);
+                                fs::copy(&local_path, archive_path).into_diagnostic()?;
+                                fs::remove_file(&local_path).into_diagnostic()?;
+                            } else {
+                                return Err(miette::miette!(format!(
+                                    "checksum missmatch for archive {}, expected: {}, actual {}",
+                                    url.to_string(),
+                                    sha512,
+                                    downloaded_file_hash
+                                )));
+                            }
                         }
                     } else {
                         println!("File {} exists skipping", local_file.display());

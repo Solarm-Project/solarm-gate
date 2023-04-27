@@ -1,4 +1,4 @@
-use crate::workspace::{DownloadFile, Workspace};
+use crate::workspace::{DownloadFile, HasherKind, Workspace};
 use bundle::{ArchiveSource, Bundle, SourceNode};
 use clap::Subcommand;
 use curl::easy::Easy2;
@@ -64,7 +64,7 @@ impl std::fmt::Display for Sources {
 pub fn handle_add_source(wks: &Workspace, src: &Sources, pkg: &mut Bundle) -> Result<()> {
     let src_node = match src {
         Sources::Archive { url } => {
-            let mut easy = Easy2::new(wks.open_local_file(url.clone())?);
+            let mut easy = Easy2::new(wks.open_local_file(url.clone(), HasherKind::Sha512)?);
             easy.get(true).into_diagnostic()?;
             easy.url(&url.to_string()).into_diagnostic()?;
             easy.progress(true).into_diagnostic()?;
@@ -72,7 +72,8 @@ pub fn handle_add_source(wks: &Workspace, src: &Sources, pkg: &mut Bundle) -> Re
 
             SourceNode::Archive(ArchiveSource {
                 src: url.to_string(),
-                sha512: { easy.get_mut() as &mut DownloadFile }.get_hash(),
+                sha512: Some({ easy.get_mut() as &mut DownloadFile }.get_hash()),
+                ..Default::default()
             })
         }
         Sources::Git { url, branch, tag } => SourceNode::Git(bundle::GitSource {
