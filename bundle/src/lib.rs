@@ -131,35 +131,64 @@ impl Bundle {
 pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
+
     #[knuffel(child, unwrap(argument))]
     pub project_name: String,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub classification: Option<String>,
+
     #[knuffel(children(name = "maintainer"), unwrap(argument))]
+    #[builder(default)]
     pub maintainers: Vec<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub summary: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub license_file: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub license: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub prefix: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub version: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub revision: Option<String>,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub project_url: Option<String>,
+
     #[knuffel(child)]
+    #[builder(default)]
     pub seperate_build_dir: bool,
+
     #[knuffel(child, unwrap(argument))]
+    #[builder(default)]
     pub maintainer: Option<String>,
+
     #[knuffel(children(name = "source"))]
+    #[builder(default)]
     pub sources: Vec<SourceSection>,
+
     #[knuffel(children(name = "dependency"))]
+    #[builder(default)]
     pub dependencies: Vec<Dependency>,
+
     #[knuffel(children(name = "build"))]
+    #[builder(default)]
     build_section: Vec<BuildSection>,
 }
 
