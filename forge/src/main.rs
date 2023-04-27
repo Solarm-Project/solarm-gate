@@ -16,12 +16,9 @@ use axum::{
     routing::get,
     Router,
 };
-use bonsaidb::{
-    core::connection::AsyncStorageConnection,
-    local::{
-        config::{Builder, StorageConfiguration},
-        AsyncDatabase, AsyncStorage,
-    },
+use bonsaidb::local::{
+    config::{Builder, StorageConfiguration},
+    AsyncDatabase, AsyncStorage,
 };
 use clap::Parser;
 use miette::IntoDiagnostic;

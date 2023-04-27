@@ -3,11 +3,7 @@ use crate::database::Profile;
 use crate::database::Publisher;
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject, Subscription};
 use base64::Engine;
-use bonsaidb::core::actionable::Configuration;
-use bonsaidb::core::admin::PermissionGroup;
 use bonsaidb::core::connection::AsyncStorageConnection;
-use bonsaidb::core::permissions::ResourceName;
-use bonsaidb::core::permissions::Statement;
 use bonsaidb::core::schema::SerializedCollection;
 use bonsaidb::core::transaction::Operation;
 use bonsaidb::core::transaction::Transaction;
@@ -62,10 +58,12 @@ impl QueryRoot {
             .collect())
     }
 
-    async fn packages(&self, _ctx: &Context<'_>) -> Vec<Package> {
-        vec![Package(
-            PackageBuilder::new().name(String::from("test")).finish(),
-        )]
+    async fn packages(&self, _ctx: &Context<'_>) -> Result<Vec<Package>> {
+        Ok(vec![Package(
+            PackageBuilder::default()
+                .name(String::from("test"))
+                .build()?,
+        )])
     }
 }
 
@@ -170,8 +168,8 @@ impl MutationRoot {
 
         let storage = ctx.data_unchecked::<AsyncStorage>();
         let mut tx = Transaction::new();
-        let user_id = storage.create_user(&username).await?;
-        let admin = storage.admin().await;
+        //let user_id = storage.create_user(&username).await?;
+        //let admin = storage.admin().await;
         //TODO Permissions
         let profile = Profile {
             username: username.clone(),
@@ -195,12 +193,12 @@ impl MutationRoot {
             .await?;
         tx.apply_async(&db).await?;
 
-        let home_permission_group = PermissionGroup {
-            name: format!("home-publisher-{}", &username),
-            statements: vec![Statement::for_resource(ResourceName::named("profiles"))
-                .allowing_all()
-                .with("username", Configuration::String(username.clone()))],
-        };
+        //let home_permission_group = PermissionGroup {
+        //    name: format!("home-publisher-{}", &username),
+        //    statements: vec![Statement::for_resource(ResourceName::named("profiles"))
+        //        .allowing_all()
+        //        .with("username", Configuration::String(username.clone()))],
+        //};
 
         Ok(RegisterOutput {
             username: username.clone(),

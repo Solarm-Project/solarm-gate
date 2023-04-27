@@ -1,4 +1,5 @@
 use derive_builder::Builder;
+use kdl::KdlValue;
 use miette::{Diagnostic, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -38,7 +39,11 @@ pub struct Bundle {
 
 impl Bundle {
     pub fn open_local<P: AsRef<Path>>(path: P) -> miette::Result<Self> {
-        let path = path.as_ref().canonicalize().into_diagnostic()?;
+        let path = path
+            .as_ref()
+            .canonicalize()
+            .into_diagnostic()
+            .wrap_err(miette::miette!("could not open bundle"))?;
 
         let (package_document_string, name) = if path.is_file() {
             (
@@ -127,7 +132,11 @@ pub struct Package {
     #[knuffel(child, unwrap(argument))]
     pub name: String,
     #[knuffel(child, unwrap(argument))]
+    pub project_name: String,
+    #[knuffel(child, unwrap(argument))]
     pub classification: Option<String>,
+    #[knuffel(children(name = "maintainer"), unwrap(argument))]
+    pub maintainers: Vec<String>,
     #[knuffel(child, unwrap(argument))]
     pub summary: Option<String>,
     #[knuffel(child, unwrap(argument))]
@@ -371,13 +380,43 @@ impl Package {
 pub struct Dependency {
     #[knuffel(argument)]
     pub name: String,
+    #[knuffel(property, default = false)]
+    pub dev: bool,
+    #[knuffel(property)]
+    pub kind: Option<DependencyKind>,
 }
 
 impl Dependency {
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("dependency");
         node.insert(0, self.name.as_str());
+
+        if self.dev {
+            node.insert("dev", true);
+        }
+
+        if let Some(kind) = &self.kind {
+            node.insert("kind", kind);
+        }
+
         node
+    }
+}
+
+#[derive(Debug, knuffel::DecodeScalar, Clone, Serialize, Deserialize)]
+pub enum DependencyKind {
+    Require,
+    Incorporate,
+    Optional,
+}
+
+impl From<&DependencyKind> for KdlValue {
+    fn from(value: &DependencyKind) -> Self {
+        match value {
+            DependencyKind::Require => "require".into(),
+            DependencyKind::Incorporate => "incorporate".into(),
+            DependencyKind::Optional => "optional".into(),
+        }
     }
 }
 
@@ -423,20 +462,40 @@ pub enum SourceNode {
     Overlay(OverlaySource),
 }
 
-#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct ArchiveSource {
     #[knuffel(argument)]
     pub src: String,
 
     #[knuffel(property)]
-    pub sha512: String,
+    pub sha512: Option<String>,
+
+    #[knuffel(property)]
+    pub sha256: Option<String>,
+
+    #[knuffel(property)]
+    pub signature_url_extension: Option<String>,
+
+    #[knuffel(property)]
+    pub signature_url: Option<String>,
 }
 
 impl ArchiveSource {
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("archive");
         node.insert(0, self.src.as_str());
-        node.insert("sha512", self.sha512.as_str());
+        if let Some(sha512) = &self.sha512 {
+            node.insert("sha512", sha512.as_str());
+        }
+        if let Some(sha256) = &self.sha256 {
+            node.insert("sha256", sha256.as_str());
+        }
+        if let Some(signature_ext) = &self.signature_url_extension {
+            node.insert("singature-url-extension", signature_ext.as_str());
+        }
+        if let Some(sig_url) = &self.signature_url {
+            node.insert("signature-url", sig_url.as_str());
+        }
         node
     }
 }

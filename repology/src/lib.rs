@@ -41,6 +41,44 @@ pub struct Metadata {
     pub version: Version,
 }
 
+impl MetadataBuilder {
+    pub fn add_maintainer<S: Into<String>>(&mut self, maintainer: S) -> &mut Self {
+        if let Some(maintainers) = self.maintainers.as_mut() {
+            maintainers.push(maintainer.into());
+        } else {
+            self.maintainers = Some(vec![maintainer.into()]);
+        }
+        self
+    }
+
+    pub fn add_homepage<S: Into<String>>(&mut self, value: S) -> &mut Self {
+        if let Some(homepages) = self.homepages.as_mut() {
+            homepages.push(value.into());
+        } else {
+            self.homepages = Some(vec![value.into()]);
+        }
+        self
+    }
+
+    pub fn add_license<S: Into<String>>(&mut self, value: S) -> &mut Self {
+        if let Some(licenses) = self.licenses.as_mut() {
+            licenses.push(value.into());
+        } else {
+            self.licenses = Some(vec![value.into()]);
+        }
+        self
+    }
+
+    pub fn add_category<S: Into<String>>(&mut self, value: S) -> &mut Self {
+        if let Some(categories) = self.categories.as_mut() {
+            categories.push(value.into());
+        } else {
+            self.categories = Some(vec![value.into()]);
+        }
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     type Result<T> = miette::Result<T, Error>;
