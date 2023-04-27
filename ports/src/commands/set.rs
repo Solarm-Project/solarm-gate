@@ -34,6 +34,9 @@ pub enum Sections {
     ProjectURL {
         project_url: String,
     },
+    ProjectName {
+        name: String,
+    },
 }
 
 enum LicenseAction {
@@ -105,6 +108,10 @@ pub fn handle_set(_wks: &Workspace, section: &Sections, pkg: &mut Bundle) -> Res
         }
         Sections::ProjectURL { project_url } => {
             pkg.package_document.project_url = Some(project_url.clone());
+            Ok(())
+        }
+        Sections::ProjectName { name } => {
+            pkg.package_document.project_name = name.clone();
             Ok(())
         }
     }

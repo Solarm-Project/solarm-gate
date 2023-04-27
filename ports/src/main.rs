@@ -191,7 +191,8 @@ fn main() -> Result<()> {
             }
 
             let pkg = bundle::PackageBuilder::default()
-                .name(name)
+                .name(name.clone())
+                .project_name(name)
                 .build()
                 .into_diagnostic()?;
 
