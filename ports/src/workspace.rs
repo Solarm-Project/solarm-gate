@@ -54,14 +54,29 @@ impl Workspace {
 
     pub fn open_local_file(&self, url: url::Url, hasher_kind: HasherKind) -> Result<DownloadFile> {
         let download_dir = self.get_or_create_download_dir()?;
-        DownloadFile::new(
-            download_dir.join(
-                Path::new(url.path())
-                    .file_name()
-                    .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
-            ),
-            hasher_kind,
-        )
+        let p = download_dir.join(
+            Path::new(url.path())
+                .file_name()
+                .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
+        );
+        DownloadFile::new(p, hasher_kind)
+    }
+
+    pub fn open_or_truncate_local_file(
+        &self,
+        url: url::Url,
+        hasher_kind: HasherKind,
+    ) -> Result<DownloadFile> {
+        let download_dir = self.get_or_create_download_dir()?;
+        let p = download_dir.join(
+            Path::new(url.path())
+                .file_name()
+                .ok_or(WorkspaceError::InvalidURLError(url.clone()))?,
+        );
+        if p.exists() {
+            std::fs::remove_file(&p)?;
+        }
+        DownloadFile::new(p, hasher_kind)
     }
 
     pub fn get_name(&self) -> String {

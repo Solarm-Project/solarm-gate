@@ -64,7 +64,8 @@ impl std::fmt::Display for Sources {
 pub fn handle_add_source(wks: &Workspace, src: &Sources, pkg: &mut Bundle) -> Result<()> {
     let src_node = match src {
         Sources::Archive { url } => {
-            let mut easy = Easy2::new(wks.open_local_file(url.clone(), HasherKind::Sha512)?);
+            let mut easy =
+                Easy2::new(wks.open_or_truncate_local_file(url.clone(), HasherKind::Sha512)?);
             easy.get(true).into_diagnostic()?;
             easy.url(&url.to_string()).into_diagnostic()?;
             easy.progress(true).into_diagnostic()?;
