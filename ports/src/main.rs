@@ -192,7 +192,7 @@ fn main() -> Result<()> {
 
             let pkg = bundle::PackageBuilder::default()
                 .name(name.clone())
-                .project_name(name)
+                .project_name(name.clone())
                 .build()
                 .into_diagnostic()
                 .wrap_err(miette::miette!("could not create new bundle"))?;
@@ -204,7 +204,7 @@ fn main() -> Result<()> {
                 .into_diagnostic()
                 .wrap_err(miette::miette!("could not save package.kdl"))?;
 
-            println!("created package: {}", path.display());
+            println!("created package: {}", name);
             Ok(())
         }
         Command::Edit { unmatched, package } => {

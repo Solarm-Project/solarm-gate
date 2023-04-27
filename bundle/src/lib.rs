@@ -219,6 +219,10 @@ impl Package {
         name_node.insert(0, self.name.as_str());
         doc.nodes_mut().push(name_node);
 
+        let mut project_name_node = kdl::KdlNode::new("project-name");
+        project_name_node.insert(0, self.name.as_str());
+        doc.nodes_mut().push(project_name_node);
+
         if let Some(classification) = &self.classification {
             let mut classification_node = kdl::KdlNode::new("classification");
             classification_node.insert(0, classification.as_str());
