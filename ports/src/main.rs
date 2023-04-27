@@ -224,7 +224,7 @@ fn main() -> Result<()> {
                 .to_string_lossy()
                 .to_string();
 
-            let mut package_bundle = Bundle::open_local(path)?;
+            let mut package_bundle = Bundle::open_local(path.clone())?;
 
             if let Some(unmatched) = unmatched {
                 let mut args = vec!["ports"];
@@ -233,7 +233,16 @@ fn main() -> Result<()> {
                 let wks = settings.get_current_wks()?;
                 let cmd: ShellCommands = ShellCommands::parse_from(args);
                 match handle_command(&cmd, &wks, &mut package_bundle) {
-                    Ok(_) => return Ok(()),
+                    Ok(_) => {
+                        let doc = package_bundle.package_document.to_document();
+                        let mut pkg_file =
+                            std::fs::File::create(path.join("package.kdl")).into_diagnostic()?;
+                        pkg_file
+                            .write_all(doc.to_string().as_bytes())
+                            .into_diagnostic()
+                            .wrap_err(miette::miette!("could not save package.kdl"))?;
+                        return Ok(());
+                    }
                     Err(err) => {
                         return Err(err);
                     }
@@ -281,6 +290,13 @@ fn main() -> Result<()> {
                     }
                 }
             }
+
+            let doc = package_bundle.package_document.to_document();
+            let mut pkg_file = std::fs::File::create(path.join("package.kdl")).into_diagnostic()?;
+            pkg_file
+                .write_all(doc.to_string().as_bytes())
+                .into_diagnostic()
+                .wrap_err(miette::miette!("could not save package.kdl"))?;
             Ok(())
         }
         Command::Build {
