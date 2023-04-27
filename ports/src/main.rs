@@ -194,13 +194,15 @@ fn main() -> Result<()> {
                 .name(name.clone())
                 .project_name(name)
                 .build()
-                .into_diagnostic()?;
+                .into_diagnostic()
+                .wrap_err(miette::miette!("could not create new bundle"))?;
 
             let doc = pkg.to_document();
             let mut pkg_file = std::fs::File::create(path.join("package.kdl")).into_diagnostic()?;
             pkg_file
                 .write_all(doc.to_string().as_bytes())
-                .into_diagnostic()?;
+                .into_diagnostic()
+                .wrap_err(miette::miette!("could not save package.kdl"))?;
 
             println!("created package: {}", path.display());
             Ok(())
