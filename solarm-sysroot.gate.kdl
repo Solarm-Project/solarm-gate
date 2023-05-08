@@ -15,8 +15,13 @@ transform include="defaults"
 //transform include="ignore-gcc-usr-lib"
 transform "<transform file dir link hardlink path=opt/solarm/share/info/dir -> drop>"
 
+// Drop the sysroot since we are using Braich at the moment as sysroot and not need custom packages
+transform "<transform file path=opt/solarm/sysroot/.* -> drop>"
+
 // pkgdepend seems to have problems while checking cross compile dependencies
-transform "<transform file path=opt/solarm/sysroot/.* -> add pkg.depend.bypass-generate .*>"
+transform "<transform file path=opt/solarm/aarch64.* -> add pkg.depend.bypass-generate .*>"
+
+transform "<transform dir -> drop>"
 
 package {
 	name "developer/solarm/cross/arm/gnu-binutils"
@@ -29,30 +34,11 @@ package {
 	}
 }
 
+// This also build the linker which is mandatory for our GCC
 package {
 	name "developer/solarm/cross/arm/sysroot"
 }
 
-package {
-	name "developer/solarm/cross/arm/gcc-bootstrap"
-	version "10.3.0"
-	prefix "/opt/solarm"
-	configure {
-		option "target=aarch64-unknown-solaris2.11"
-		option "with-sysroot=/opt/solarm/sysroot"
-		option "with-as=/opt/solarm/bin/aarch64-unknown-solaris2.11-as"
-		option "with-ld=/opt/solarm/bin/amd64/ld"
-		option "enable-languages=c,c++"
-		option "disable-shared"
-		option "disable-libatomic"
-	}
-	dependency "developer/solarm/cross/arm/gnu-binutils"
-	dependency "developer/solarm/cross/arm/sysroot"
-}
-
-package {
-	name "developer/solarm/cross/arm/sysroot-libraries"
-}
 
 package {
 	name "developer/solarm/cross/arm/gcc"
@@ -70,6 +56,7 @@ package {
 	dependency "developer/solarm/cross/arm/gnu-binutils"
 	dependency "developer/solarm/cross/arm/sysroot"
 }
+
 
 package {
 	name "developer/solarm/cross/arm/zlib"
@@ -145,3 +132,4 @@ package {
 		flag "--sysroot=/opt/solarm/sysroot"
 	}
 }
+
