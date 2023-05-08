@@ -17,14 +17,22 @@ transform "<transform file dir link hardlink path=opt/solarm/share/info/dir -> d
 
 package {
 	name "developer/gnu-binutils"
+	project-name "gnu-binutils"
 	version "2.39"	
 }
 
 package {
 	name "developer/gcc"
+	project-name "gcc"
 	version "10.3.0"	
 }
 
 package {
 	name "network/storage/garage"
+	project-name "garage"
+}
+
+package {
+	name "database/etcd"
+	project-name "etcd"
 }

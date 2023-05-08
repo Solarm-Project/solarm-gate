@@ -1,0 +1,17 @@
+name "database/etcd"
+project-name "etcd"
+summary "Distributed reliable key-value store for the most critical data of a distributed system"
+classification "System/Services"
+project-url "https://etcd.io/"
+license-file "LICENSE"
+license "Apache-2.0"
+
+source {
+    archive "https://codeload.github.com/etcd-io/etcd/tar.gz/refs/tags/v3.5.8" sha512="f1f1e975fc26a9cf91bd9b5871716014a268055349ff2d7beeb446288dcaa726f1fc84b5b254713f62f9f579f842cebba6d74746376117593fbf64e670030945"
+    file "etcd.xml"
+    file "etcd.conf.yaml.sample"
+}
+
+build {
+    script "build_install.sh"
+}
