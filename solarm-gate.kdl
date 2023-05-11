@@ -36,3 +36,8 @@ package {
 	name "database/etcd"
 	project-name "etcd"
 }
+
+package {
+	name "application/kuberbetes/kube-apiserver"
+	project-name "kubernetes"
+}

@@ -1,0 +1,17 @@
+name "kupe-api-server"
+project-name "kubernetes"
+summary "Production-Grade Container Scheduling and Management API Server"
+classification "System/Services"
+project-url "https://kubernetes.io/"
+license-file "LICENSE"
+license "Apache-2.0"
+
+source {
+	archive "https://codeload.github.com/tnorlin/kubernetes/tar.gz/refs/tags/v1.27.1-illumos" sha512="bf8ca1f3a54ca5a7b75d7fda3243f7acb5e0fa441c62ae47ded19288f5dd2d01737bdf91b0c480bd64b46d5d913b0ae20117c4aebe7781cc13d11b7b57772f77"
+	file "method.sh"
+	file "kube-apiserver.xml"
+}
+
+build {
+	script "build_install.sh"
+}
