@@ -172,6 +172,7 @@ pub fn run_mogrify(
         pkg_mogrify_cmd.arg("-I").arg(&includes_path);
     }
     pkg_mogrify_cmd
+        .current_dir("..")
         .arg(
             manifest_path
                 .join("generated.p5m")
