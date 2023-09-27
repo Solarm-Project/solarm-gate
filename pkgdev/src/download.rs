@@ -48,7 +48,6 @@ pub(crate) fn download_and_verify(
                             if downloaded_file_hash == *sha512 {
                                 println!("Success, checksums match");
                                 let local_path = local_file.get_path();
-                                drop(local_file);
                                 fs::copy(&local_path, archive_path).into_diagnostic()?;
                                 fs::remove_file(&local_path).into_diagnostic()?;
                             } else {
