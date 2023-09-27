@@ -25,12 +25,15 @@ transform "<transform dir -> drop>"
 
 package {
 	name "developer/solarm/cross/arm/gnu-binutils"
+	project-name "gnu-binutils"
 	version "2.39"
 	prefix "/opt/solarm"
-	configure {
-		option "with-sysroot"
-		option "target=aarch64-unknown-solaris2.11"
-		option "enable-initfini-array"
+	build {
+		configure {
+			option "with-sysroot"
+			option "target=aarch64-unknown-solaris2.11"
+			option "enable-initfini-array"
+		}
 	}
 }
 
@@ -44,14 +47,16 @@ package {
 	name "developer/solarm/cross/arm/gcc"
 	version "10.3.0"
 	prefix "/opt/solarm"
-	configure {
-		option "target=aarch64-unknown-solaris2.11"
-		option "with-sysroot=/opt/solarm/sysroot"
-		option "with-as=/opt/solarm/bin/aarch64-unknown-solaris2.11-as"
-		option "with-ld=/opt/solarm/bin/amd64/ld"
-		option "enable-languages=c,c++"
-		flag "-g -O2 -mno-outline-atomics -mtls-dialect=trad" name="CFLAGS_FOR_TARGET"		
-		flag "-g -O2 -mno-outline-atomics -mtls-dialect=trad" name="CXXFLAGS_FOR_TARGET"
+	build {
+		configure {
+			option "target=aarch64-unknown-solaris2.11"
+			option "with-sysroot=/opt/solarm/sysroot"
+			option "with-as=/opt/solarm/bin/aarch64-unknown-solaris2.11-as"
+			option "with-ld=/opt/solarm/bin/amd64/ld"
+			option "enable-languages=c,c++"
+			flag "-g -O2 -mno-outline-atomics -mtls-dialect=trad" name="CFLAGS_FOR_TARGET"		
+			flag "-g -O2 -mno-outline-atomics -mtls-dialect=trad" name="CXXFLAGS_FOR_TARGET"
+		}
 	}
 	dependency "developer/solarm/cross/arm/gnu-binutils"
 	dependency "developer/solarm/cross/arm/sysroot"
@@ -70,11 +75,13 @@ package {
 	name "developer/solarm/cross/arm/libxml2"
 	prefix "/opt/solarm/sysroot/usr"
 
-	configure {
-		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
-		flag "--sysroot=/opt/solarm/sysroot"
-		option "host=aarch64-unknown-solaris2.11"
-		option "without-zlib" //TODO Check why we did not build with zlib
+	build {
+		configure {
+			compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
+			flag "--sysroot=/opt/solarm/sysroot"
+			option "host=aarch64-unknown-solaris2.11"
+			option "without-zlib" //TODO Check why we did not build with zlib
+		}
 	}
 }
 
@@ -91,25 +98,28 @@ package {
 	name "developer/solarm/cross/arm/idnkit"
 	prefix "/opt/solarm/sysroot/usr"
 
-	configure {
-		option "host=aarch64-unknown-solaris2.11"
-		option "with-sysroot=/opt/solarm/sysroot"
-		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
+	build {
+		configure {
+			option "host=aarch64-unknown-solaris2.11"
+			option "with-sysroot=/opt/solarm/sysroot"
+			compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
+		}
 	}
 }
 
 package {
 	name "developer/solarm/cross/arm/nspr"
 	prefix "/opt/solarm/sysroot/usr"
-
-	configure {
-		option "build=i386-pc-solaris2.11"
-		option "target=aarch64-unknown-solaris2.11"
-		option "libdir=/opt/solarm/sysroot/usr/lib/mps"
-		option "bindir=/opt/solarm/sysroot/usr/bin"
-		option "includedir=/opt/solarm/sysroot/usr/include/mps"
-		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
-		flag "--sysroot=/opt/solarm/sysroot"
+	build {
+		configure {
+			option "build=i386-pc-solaris2.11"
+			option "target=aarch64-unknown-solaris2.11"
+			option "libdir=/opt/solarm/sysroot/usr/lib/mps"
+			option "bindir=/opt/solarm/sysroot/usr/bin"
+			option "includedir=/opt/solarm/sysroot/usr/include/mps"
+			compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc"
+			flag "--sysroot=/opt/solarm/sysroot"
+		}
 	}
 }
 
@@ -124,12 +134,13 @@ package {
 package {
 	name "developer/solarm/cross/arm/xorriso"
 	prefix "/opt/solarm/sysroot/usr"
-
-	configure {
-		option "build=i386-pc-solaris2.11"
-		option "host=aarch64-unknown-solaris2.11"
-		compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" 
-		flag "--sysroot=/opt/solarm/sysroot"
+	build {
+		configure {
+			option "build=i386-pc-solaris2.11"
+			option "host=aarch64-unknown-solaris2.11"
+			compiler "/opt/solarm/bin/aarch64-unknown-solaris2.11-gcc" 
+			flag "--sysroot=/opt/solarm/sysroot"
+		}
 	}
 }
 
