@@ -227,7 +227,7 @@ fn main() -> Result<()> {
             let mut package_bundle = Bundle::open_local(path.clone())?;
 
             if let Some(unmatched) = unmatched {
-                let mut args = vec!["ports"];
+                let mut args = vec!["pkgdev"];
                 let mut argn = unmatched.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
                 args.append(&mut argn);
                 let wks = settings.get_current_wks()?;

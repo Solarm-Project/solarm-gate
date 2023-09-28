@@ -45,7 +45,7 @@ pub fn handle_forge(cmd: &ForgeCLI) -> Result<()> {
                 let client = reqwest::blocking::Client::new();
                 let resp = client
                     .post("https://api.github.com/graphql")
-                    .header(USER_AGENT, "Ports Cli")
+                    .header(USER_AGENT, "PkgDev Cli")
                     .header(AUTHORIZATION, auth_header)
                     .json(&request_body)
                     .send()

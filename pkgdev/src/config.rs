@@ -29,7 +29,7 @@ type Result<T> = miette::Result<T, Error>;
 
 const QUALIFIER: &str = "org";
 const ORG: &str = "solarm";
-const APP_NAME: &str = "ports";
+const APP_NAME: &str = "pkgdev";
 const DEFAULT_WORKSPACE_DIR: &str = "wks";
 const DEFAULT_OUTPUT_DIR_DIR: &str = "output";
 const DEFAULT_REPO_DIR_DIR: &str = "repo";
