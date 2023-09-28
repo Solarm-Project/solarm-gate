@@ -12,3 +12,5 @@ miette = { version = "4.3.0", features = ["fancy"] }
 thiserror = "1.0.38"
 url = "2.3.1"
 bundle = {path="../bundle"}
+serde = { version = "1.0.163", features = ["derive"] }
+

@@ -1,5 +1,6 @@
 use bundle::Package;
 use miette::{Diagnostic, IntoDiagnostic};
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{read_to_string, File},
     io::Write,
@@ -31,7 +32,7 @@ pub enum GateError {
 
 type GateResult<T> = std::result::Result<T, GateError>;
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct Gate {
     path: PathBuf,
     #[knuffel(child, unwrap(argument))]
@@ -148,7 +149,7 @@ impl Gate {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct Transform {
     #[knuffel(arguments)]
     actions: Vec<String>,
@@ -180,7 +181,7 @@ impl Transform {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub struct Distribution {
     #[knuffel(property(name = "type"), default, str)]
     pub distribution_type: DistributionType,
@@ -197,7 +198,7 @@ impl Distribution {
     }
 }
 
-#[derive(Debug, knuffel::Decode, Clone)]
+#[derive(Debug, knuffel::Decode, Clone, Serialize, Deserialize)]
 pub enum DistributionType {
     Tarbball,
     IPS,
