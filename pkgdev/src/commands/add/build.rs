@@ -16,7 +16,7 @@ pub enum BuildSection {
     },
 }
 
-pub(crate) fn handle_section(section: BuildSection) -> bundle::BuildSection {
+pub(crate) fn handle_section(section: &BuildSection) -> bundle::BuildSection {
     match section {
         BuildSection::Configure { options, flags } => {
             let options = options
@@ -24,7 +24,7 @@ pub(crate) fn handle_section(section: BuildSection) -> bundle::BuildSection {
                 .map(|opt| {
                     if let Some((key, value)) = opt.split_once(' ') {
                         bundle::BuildOptionNode {
-                            option: format!("{}={}", key, values),
+                            option: format!("{}={}", key, value),
                         }
                     } else {
                         bundle::BuildOptionNode {
