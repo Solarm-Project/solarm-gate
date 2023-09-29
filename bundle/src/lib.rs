@@ -212,6 +212,10 @@ impl Package {
             .unwrap_or(BuildSection::default())
     }
 
+    pub fn add_build_section(&mut self, section: BuildSection) {
+        self.build_section.push(section);
+    }
+
     pub fn to_node(&self) -> kdl::KdlNode {
         let mut node = kdl::KdlNode::new("package");
         let doc = node.ensure_children();

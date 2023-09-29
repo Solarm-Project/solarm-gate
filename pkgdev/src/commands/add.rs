@@ -1,3 +1,4 @@
+mod build;
 mod source;
 
 use bundle::Bundle;
@@ -23,6 +24,10 @@ pub enum Sections {
 
         #[arg(long, short)]
         dev: bool,
+    },
+    Build {
+        #[command(subcommand)]
+        section: build::BuildSection,
     },
 }
 
@@ -56,6 +61,11 @@ pub fn handle_add(wks: &Workspace, section: &Sections, doc: &mut Bundle) -> Resu
                 dev: dev.clone(),
                 kind: kind.clone().map(|k| k.into()),
             });
+            Ok(())
+        }
+        Sections::Build { section } => {
+            let section = build::handle_section(section);
+            doc.package_document.add_build_section(section);
             Ok(())
         }
     }
