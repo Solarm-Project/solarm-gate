@@ -18,7 +18,7 @@ use axum::{
 };
 use bonsaidb::local::{
     config::{Builder, StorageConfiguration},
-    AsyncDatabase, AsyncStorage,
+    AsyncDatabase,
 };
 use clap::Parser;
 use miette::IntoDiagnostic;
@@ -97,6 +97,9 @@ pub async fn on_connection_init(value: serde_json::Value) -> async_graphql::Resu
 struct CLIArgs {
     #[arg(long, short, default_value = "forge.bonsaidb")]
     data_dir: PathBuf,
+
+    #[arg(long)]
+    testing: bool,
 }
 
 #[tokio::main]
@@ -106,11 +109,16 @@ async fn main() -> miette::Result<()> {
 
     let args = CLIArgs::parse();
 
-    let db_config = StorageConfiguration::new(args.data_dir)
+    let mut db_config = StorageConfiguration::new(args.data_dir)
         .with_schema::<database::ForgeSchema>()
         .into_diagnostic()?;
+    if args.testing {
+        db_config = db_config.memory_only();
+    }
 
-    let storage = AsyncStorage::open(db_config).await.into_diagnostic()?;
+    let storage = AsyncDatabase::open::<database::ForgeSchema>(db_config)
+        .await
+        .into_diagnostic()?;
 
     let schema = Schema::build(QueryRoot, MutationRoot, SubscriptionRoot)
         .data(storage)

@@ -59,11 +59,9 @@ impl QueryRoot {
     }
 
     async fn packages(&self, _ctx: &Context<'_>) -> Result<Vec<Package>> {
-        Ok(vec![Package(
-            PackageBuilder::default()
-                .name(String::from("test"))
-                .build()?,
-        )])
+        let db = ctx.data_unchecked::<AsyncDatabase>();
+        let list = Package::all_async(db).await?;
+        Ok(list.try_into())
     }
 }
 
