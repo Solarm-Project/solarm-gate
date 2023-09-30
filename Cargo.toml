@@ -1,7 +1,5 @@
-
-
 [workspace]
-members = ["bundle", "gate","repology", "forge_api", "pkgdev", "forge"]
+members = ["crates/*"]
 resolver = "2"
 
 

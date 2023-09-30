@@ -1307,6 +1307,8 @@ dependencies = [
 [[package]]
 name = "file-matcher"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d54a429ce9698e7d0de61e7f570477cc2d2f8b3f48f976b2edcfdbd797c085eb"
 dependencies = [
  "fs_extra",
  "regex",
@@ -1998,8 +2000,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.140"
-source = "git+https://github.com/Toasterson/libc.git#595c2aba82937ab954037c1ebe4baf5f88afe9b4"
+version = "0.2.148"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
 
 [[package]]
 name = "libz-sys"
