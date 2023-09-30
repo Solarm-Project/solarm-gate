@@ -1,13 +1,13 @@
 [package]
 name = "pkgdev"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bundle = { version = "0.1.0", path = "../bundle" }
-gate ={ version = "0.1.0", path = "../gate" }
+bundle = { version = "*", path = "../bundle" }
+gate ={ version = "*", path = "../gate" }
 clap = { version = "4.0.29", features = ["derive"] }
 compress-tools = { version = "0.14.0", features = ["blocking"] }
 curl = "0.4.44"
@@ -32,6 +32,6 @@ file-matcher = { version = "0.7.0", features = ["regex", "copier", "serde"] }
 shellexpand = "3.0.0"
 lazy_static = "1.4.0"
 config = "0.13.3"
-repology = { version = "0.1.0", path = "../repology" }
+repology = { version = "*", path = "../repology" }
 semver = { version = "1.0.17", features = ["serde"] }
 

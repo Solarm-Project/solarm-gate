@@ -1,8 +1,14 @@
 [workspace]
 members = ["crates/*"]
 resolver = "2"
+default-members = ["crates/pkgdev"]
 
+[workspace.package]
+version = "0.2.0"
+description = "Utilities and libraries to build solarm"
+edition = "2021"
 
 [patch.crates-io]
 compress-tools = { git = "https://github.com/Toasterson/compress-tools-rs" }
+
 
