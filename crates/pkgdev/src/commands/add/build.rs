@@ -58,6 +58,6 @@ pub(crate) fn handle_section(section: &BuildSection) -> bundle::BuildSection {
         }
         BuildSection::CMake => todo!(),
         BuildSection::Meson => todo!(),
-        BuildSection::Script { scripts } => todo!(),
+        BuildSection::Script { .. } => todo!(),
     }
 }

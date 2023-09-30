@@ -4,8 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-bundle = { version = "0.1.0", path = "../bundle" }
-gate ={ version = "0.1.0", path = "../gate" }
+bundle = { version = "*", path = "../bundle" }
+gate ={ version = "*", path = "../gate" }
 clap = { version = "4.0.29", features = ["derive"] }
 miette = { version = "4.3.0", features = ["fancy"] }
 serde = { version = "1.0.151", features = ["derive"] }
