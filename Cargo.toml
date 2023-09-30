@@ -2,11 +2,9 @@
 
 [workspace]
 members = ["bundle", "gate","repology", "forge_api", "pkgdev", "forge"]
-exclude = ["rust", "libc"]
 resolver = "2"
 
 
 [patch.crates-io]
 compress-tools = { git = "https://github.com/Toasterson/compress-tools-rs" }
-file-matcher = { path = "file-matcher" }
-libc = { git = "https://github.com/Toasterson/libc.git" }
+
