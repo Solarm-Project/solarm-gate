@@ -250,7 +250,7 @@ fn main() -> Result<()> {
             }
 
             let ps1 = format!("{}$ ", basename);
-            let mut rl = rustyline::Editor::<()>::new().into_diagnostic()?;
+            let mut rl = rustyline::DefaultEditor::new().into_diagnostic()?;
             let wks = Box::new(settings.get_current_wks()?);
             loop {
                 let readline = rl.readline(&ps1);
