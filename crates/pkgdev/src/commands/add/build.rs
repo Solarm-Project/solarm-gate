@@ -4,54 +4,33 @@ use clap::Subcommand;
 pub enum BuildSection {
     Configure {
         #[arg(long, short)]
-        options: String,
-
-        #[arg(long, short)]
-        flags: String,
+        arg: Vec<String>,
     },
     CMake,
     Meson,
     Script {
-        scripts: Vec<String>,
+        arg: Vec<String>,
     },
 }
 
 pub(crate) fn handle_section(section: &BuildSection) -> bundle::BuildSection {
     match section {
-        BuildSection::Configure { options, flags } => {
-            let options = options
-                .split("--")
-                .map(|opt| {
-                    if let Some((key, value)) = opt.split_once(' ') {
-                        bundle::BuildOptionNode {
-                            option: format!("{}={}", key, value),
-                        }
+        BuildSection::Configure { arg } => {
+            let options = arg
+                .iter()
+                .filter_map(|arg| {
+                    if arg.starts_with("--") {
+                        Some(bundle::BuildOptionNode {
+                            option: arg.strip_prefix("--").unwrap().to_owned(),
+                        })
                     } else {
-                        bundle::BuildOptionNode {
-                            option: opt.to_owned(),
-                        }
+                        None
                     }
                 })
-                .collect::<Vec<bundle::BuildOptionNode>>();
-            let flags = flags
-                .split(' ')
-                .map(|flag| {
-                    if let Some((name, values)) = flag.split_once('=') {
-                        bundle::BuildFlagNode {
-                            flag: values.to_owned(),
-                            flag_name: Some(name.to_owned()),
-                        }
-                    } else {
-                        bundle::BuildFlagNode {
-                            flag: flag.to_owned(),
-                            flag_name: None,
-                        }
-                    }
-                })
-                .collect::<Vec<bundle::BuildFlagNode>>();
+                .collect();
             bundle::BuildSection::Configure(bundle::ConfigureBuildSection {
                 options,
-                flags,
+                flags: vec![],
                 compiler: None,
                 linker: None,
             })
